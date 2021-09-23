@@ -6,6 +6,11 @@ import time
 serv_IP = '127.0.0.1'  # Standard loopback interface address (localhost)
 
 
+def die_with_error(error_message):
+    print(error_message)
+    exit()
+
+
 def main(args):
     if len(args) != 2:
         print("Error")
