@@ -26,9 +26,11 @@ def main(args):
             print('Connected by', addr)
             while True:
                 data = conn.recv(1024)
-                if not data:
-                    break
-                conn.sendall(data)
+                
+                if data:
+                    # print(f'Received {data.decode("utf-8")}')
+                    print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
+                    conn.sendall(data)
 
 
 
