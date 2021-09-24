@@ -6,11 +6,11 @@ import time
 ECHOMAX = 255 # Longest string to echo
 
 class User:
-  def __init__(self, username, ip_address, ports):
-    self.username = username
-    self.ipv4 = ip_address
-    self.ports = ports
-    self.state = 'Free'
+    def __init__(self, username, ip_address, ports):
+        self.username = username
+        self.ipv4 = ip_address
+        self.ports = ports
+        self.state = 'Free'
 
 
 def die_with_error(error_message):
@@ -38,7 +38,47 @@ def register(data_list, users):
     return True
 
 
+def setup_dht(data_list, users, dht):
+    if len(data_list) < 3:
+        return False, users, dht
+
+    if not valid_user(data_list[2], users):
+        return False, users, dht
+    
+    n = int(data_list[1])
+
+    if n < 2 or n > len(users):
+        return False, users, dht
+
+    leader = ()
+    others = []
+        
+    for key, value in users.items():
+        if key == data_list[2]:
+            value.state = 'Leader'
+            users[key] = value
+            leader = (value.username, value.ipv4, value.port)
+
+        elif value.state != 'InDHT':
+            value.state = 'InDHT'
+            users[key] = value
+            others.append((value.username, value.ipv4, value.port))
+            n -= 1
+        
+        if n == 0:
+            break
+    
+    three_tuples = [leader]
+    for user in others:
+        three_tuples.append(user)
+    
+    return True, users, dht, three_tuples
+
+
 def main(args, users):
+    dht_flag = False # Set to true when a DHT has been setup
+    dht = {}
+
     if len(args) != 2:
         die_with_error(f"Usage:  {args[0]} <UDP SERVER PORT>\n")
     
@@ -73,10 +113,20 @@ def main(args, users):
                             conn.sendall(b'SUCCESS')
                         else:
                             conn.sendall(b'FAILURE')
+                    elif data_list[0] == 'setup-dht':
+                        # setup-dht ⟨n⟩ ⟨user-name⟩
+                        if dht_flag:
+                            conn.sendall(b'FAILURE')
+
+                        # Make call to setup_dht    
+                        valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
+
+                        if valid:
+                            conn.sendall(b'SUCCESS')
+                        else:
+                            conn.sendall(b'FAILURE')
 
                     # conn.sendall(data)
-
-
 
 
 if __name__ == "__main__":
