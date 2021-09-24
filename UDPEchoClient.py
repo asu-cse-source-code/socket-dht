@@ -1,9 +1,10 @@
+import json
 import socket
 import sys
 import time
 
-ECHOMAX = 255 # Longest string to echo
-ITERATIONS = 5 # Number of iterations the client executes
+# ECHOMAX = 255 # Longest string to echo
+# ITERATIONS = 5 # Number of iterations the client executes
 
 
 def die_with_error(error_message):
@@ -24,13 +25,11 @@ def main(args):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((serv_IP, echo_serv_port))
 
-        i = 0
-        print(f"client: Echoing strings for {ITERATIONS} iterations\n")
+        # i = 0
+        # print(f"client: Echoing strings for {ITERATIONS} iterations\n")
         
-        while i < ITERATIONS:
-            i += 1
-            
-            echo_string = input("\nEnter string to echo: ")
+        while True:            
+            echo_string = input("\nEnter command for the server: ")
 
             if echo_string:
                 print(f"\nClient: reads string ``{echo_string}''\n")
@@ -45,14 +44,19 @@ def main(args):
 
             
             data = s.recv(1024)
+
+            data_loaded = json.loads(data)
+            print(data_loaded)
             
-            if data:
-                print(f"client: received string ``{data.decode('utf-8')}'' from server on IP address \n")
+            if data_loaded['res'] == 'SUCCESS':
+                print("client: received SUCCESS response from server")
+                if data_loaded['data']:
+                    print(f"\nclient: received data {data_loaded['data']} from server on IP address \n")
             else:
                 die_with_error("client: recvfrom() failed")
 
-            if len(data.decode('utf-8')) > ECHOMAX:
-                die_with_error("client: recvfrom() failed")
+            # if len(data.decode('utf-8')) > ECHOMAX:
+            #     die_with_error("client: recvfrom() failed")
             
             # if from_address != serv_IP:
             #     die_with_error(f"client: Error: received a packet from unknown source: {from_address}.\n")

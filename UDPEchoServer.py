@@ -1,3 +1,4 @@
+import json
 import socket
 import sys
 import time
@@ -120,24 +121,46 @@ def main(args, users):
                             if register(data_list, users):
                                 user = User(data_list[1], data_list[2], data_list[3])
                                 users[user.username] = user
-                                conn.sendall(b'SUCCESS')
+                                response_data = json.dumps({
+                                    'res': 'SUCCESS',
+                                    'data': None
+                                })
+                                
                             else:
-                                conn.sendall(b'FAILURE')
+                                response_data = json.dumps({
+                                    'res': 'FAILURE',
+                                    'data': None
+                                })
                         elif data_list[0] == 'setup-dht':
                             # setup-dht ⟨n⟩ ⟨user-name⟩
                             if dht_flag:
-                                conn.sendall(b'FAILURE')
-
-                            # Make call to setup_dht    
-                            valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
-                            print(three_tuples)
-                            if valid:
-                                conn.sendall(b'SUCCESS')
+                                response_data = json.dumps({
+                                    'res': 'FAILURE',
+                                    'data': None
+                                })
                             else:
-                                conn.sendall(b'FAILURE')
+                                # Make call to setup_dht    
+                                valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
+                                print(three_tuples)
+                                if valid:
+                                    response_data = json.dumps({
+                                    'res': 'SUCCESS',
+                                    'data': three_tuples
+                                })
+                                else:
+                                    response_data = json.dumps({
+                                    'res': 'FAILURE',
+                                    'data': None
+                                })
 
                         else:
-                            conn.sendall(data)
+                            response_data = json.dumps({
+                                    'res': 'SUCCESS',
+                                    'data': data
+                                })
+
+                        # Send the servers response
+                        conn.sendall(response_data)
                     else:
                         break
 
