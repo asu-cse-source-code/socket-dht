@@ -74,7 +74,7 @@ def setup_dht(data_list, users, dht):
     for key, value in users.items():
         if key == data_list[2]:
             value.state = 'Leader'
-            users[key], dht_leader = value
+            users[key] = dht_leader = value
             leader = (value.username, value.ipv4, value.ports)
 
         elif value.state != 'InDHT':
