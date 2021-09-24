@@ -97,7 +97,8 @@ def threaded_socket(user, i):
     with socket.socket() as sock:
         try:
             sock.bind((user.ipv4, user.ports[i]))
-        except:
+        except Exception as error:
+            print(error)
             print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
             return
         
