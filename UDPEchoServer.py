@@ -65,12 +65,12 @@ def setup_dht(data_list, users, dht):
         if key == data_list[2]:
             value.state = 'Leader'
             users[key] = value
-            leader = (value.username, value.ipv4, value.port)
+            leader = (value.username, value.ipv4, value.ports)
 
         elif value.state != 'InDHT':
             value.state = 'InDHT'
             users[key] = value
-            others.append((value.username, value.ipv4, value.port))
+            others.append((value.username, value.ipv4, value.ports))
             n -= 1
         
         if n == 0:
