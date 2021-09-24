@@ -5,10 +5,15 @@ import time
 
 # ECHOMAX = 255 # Longest string to echo
 # ITERATIONS = 5 # Number of iterations the client executes
+HASH_SIZE = 353 # Size to initialize the local hash table to
 
 
 def die_with_error(error_message):
     sys.exit(error_message)
+
+
+def setup_local_dht():
+    return [ [] for _ in range(HASH_SIZE) ]
 
 
 def main(args):
@@ -22,12 +27,41 @@ def main(args):
 
     print(f"client: Arguments passed: server IP {serv_IP}, port {echo_serv_port}\n")
 
+    local_hash_table = []
+    '''
+    ABW,Aruba,Aruba,Aruba,AW,Aruban florin,Latin America & Caribbean,AW,2010
+    AFG,Afghanistan,Afghanistan,Islamic State of Afghanistan,AF,Afghan afghani,South Asia,AF,1979
+        local_hash_table example
+        [
+            [
+                {
+                    Country Code: ABW,
+                    Short Name: Aruba,
+                    Table Name: Aruba,
+                    Long Name: ,
+                    2-Alpha Code: ,
+                    Currency Unit: ,
+                    Region: ,
+                    WB-2 Code: ,
+                    Latest Population Census: 
+                },
+            ],
+            [
+                
+            ]
+            
+        ]
+    '''
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((serv_IP, echo_serv_port))
 
         # i = 0
         # print(f"client: Echoing strings for {ITERATIONS} iterations\n")
         
+        local_hash_table = setup_local_dht()
+        print("\nSuccessfully initialized local hash table\n")
+
         while True:            
             echo_string = input("\nEnter command for the server: ")
 

@@ -140,10 +140,9 @@ def threaded_client(conn, port):
                             'res': 'SUCCESS',
                             'data': None
                         })
-                        i = 0
-                        while i < len(user.ports):
+                        
+                        for i in range(len(user.ports)):
                             start_new_thread(threaded_socket, (user,i, ))
-                            i += 1
                         
                     else:
                         response_data = json.dumps({
