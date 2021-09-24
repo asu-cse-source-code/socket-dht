@@ -1,10 +1,12 @@
 import json
 import socket
 import sys
+from _thread import *
 import time
 
 
 ECHOMAX = 255 # Longest string to echo
+thread_count = 0 # Initialize thread count to 0
 
 class User:
     def __init__(self, username, ip_address, ports):
