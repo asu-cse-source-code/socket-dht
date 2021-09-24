@@ -96,6 +96,7 @@ def threaded_socket(user, i):
             sock.bind((user.ipv4, user.ports[i]))
         except:
             print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
+            return
         
         # Add loop here so that we can disconnect and reconnect to server
         while True:
