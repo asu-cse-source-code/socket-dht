@@ -92,7 +92,6 @@ def setup_dht(data_list, users, dht):
 
 def threaded_socket(user, i):
     if not i:
-        print("i is missing")
         i = 0
     global thread_count
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
