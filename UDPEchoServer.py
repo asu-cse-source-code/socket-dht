@@ -8,6 +8,7 @@ import time
 ECHOMAX = 255 # Longest string to echo
 BUFFER_SIZE = 1024
 dht_flag = False # Set to true when a DHT has been setup
+dht = [] # This is our DHT for state info
 users = {} # Initialize empty dictionary of users
 thread_count = 0 # Initialize thread count to 0
 
@@ -122,6 +123,7 @@ def threaded_socket(user, i):
 
 def threaded_client(conn, port):
     global thread_count
+    global dht
     with conn:
         # conn.send(str.encode('Welcome to the Servern'))
         global dht_flag
@@ -166,6 +168,8 @@ def threaded_client(conn, port):
                             'data': three_tuples
                             })
                             dht_flag = True
+                            dht = [user for user in three_tuples]
+                            print(dht)
                         else:
                             response_data = json.dumps({
                             'res': 'FAILURE',
@@ -186,8 +190,6 @@ def threaded_client(conn, port):
 
 def main(args):
     global thread_count
-    
-    dht = {}
 
     if len(args) != 2:
         die_with_error(f"Usage:  {args[0]} <UDP SERVER PORT>\n")
