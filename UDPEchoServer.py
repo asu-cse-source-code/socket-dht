@@ -45,8 +45,8 @@ def setup_dht(data_list, users, dht):
         print("\nNot enough arguments passed\n")
         return False, users, dht, None
 
-    if not valid_user(data_list[2], users):
-        print("\nInvalid user\n")
+    if valid_user(data_list[2], users):
+        print("\nLeader not in database\n")
         return False, users, dht, None
     
     n = int(data_list[1])
@@ -99,7 +99,7 @@ def main(args, users):
         except:
             die_with_error("server: bind() failed")
         
-
+        # Add loop here so that we can disconnect and reconnect to server
         while True:
         
             s.listen()
@@ -138,11 +138,10 @@ def main(args, users):
 
                         else:
                             conn.sendall(data)
-
                     else:
                         break
 
-                print("Disconnected")
+                print("Disconnected by", addr)
 
 
 if __name__ == "__main__":
