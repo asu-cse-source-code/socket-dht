@@ -95,7 +95,7 @@ def threaded_socket(user, i):
         print("i is missing")
         i = 0
     global thread_count
-    with socket.socket() as sock:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         try:
             sock.bind((user.ipv4, user.ports[i]))
         except Exception as error:
