@@ -91,30 +91,31 @@ def setup_dht(data_list, users, dht):
 
 def threaded_socket(socket, user, i):
     global thread_count
-    try:
-        socket.bind((user.ipv4, user.ports[i]))
-    except:
-        print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
-    
-    # Add loop here so that we can disconnect and reconnect to server
-    while True:
-    
-        socket.listen()
-
-        print(f"server: Port server is listening to is: {user.ports[i]}\n")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind((user.ipv4, user.ports[i]))
+        except:
+            print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
         
-        client, addr = socket.accept()
-
-        print('Connected by', addr)
-
-        start_new_thread(threaded_client, (client,socket, user.ports[i] ))
+        # Add loop here so that we can disconnect and reconnect to server
+        while True:
         
-        thread_count += 1
+            sock.listen()
 
-        print('Thread Number: ' + str(thread_count))
+            print(f"server: Port server is listening to is: {user.ports[i]}\n")
+            
+            client, addr = sock.accept()
+
+            print('Connected by', addr)
+
+            start_new_thread(threaded_client, (client, user.ports[i] ))
+            
+            thread_count += 1
+
+            print('Thread Number: ' + str(thread_count))
 
 
-def threaded_client(conn, socket, port):
+def threaded_client(conn, port):
     global thread_count
     with conn:
         # conn.send(str.encode('Welcome to the Servern'))
@@ -136,7 +137,7 @@ def threaded_client(conn, socket, port):
                         })
                         i = 0
                         while i < len(user.ports):
-                            start_new_thread(threaded_socket, (socket, user, i ))
+                            start_new_thread(threaded_socket, (user, i ))
                         
                     else:
                         response_data = json.dumps({
@@ -206,7 +207,7 @@ def main(args):
 
             print('Connected by', addr)
 
-            start_new_thread(threaded_client, (client,s,echo_serv_port ))
+            start_new_thread(threaded_client, (client,echo_serv_port ))
             
             thread_count += 1
 
