@@ -89,7 +89,7 @@ def setup_dht(data_list, users, dht):
     return True, users, dht, three_tuples
 
 
-def threaded_socket(socket, user, i):
+def threaded_socket(user, i):
     global thread_count
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         try:
