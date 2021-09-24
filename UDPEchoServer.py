@@ -96,7 +96,7 @@ def threaded_socket(user, i):
     global thread_count
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         try:
-            sock.bind((user.ipv4, user.ports[i]))
+            sock.bind(("", user.ports[i]))
         except:
             print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
             return
