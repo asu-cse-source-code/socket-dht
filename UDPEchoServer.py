@@ -138,7 +138,7 @@ def threaded_client(conn, port):
                         })
                         i = 0
                         while i < len(user.ports):
-                            start_new_thread(threaded_socket, (user, i ))
+                            start_new_thread(threaded_socket, args=(user, i, ))
                         
                     else:
                         response_data = json.dumps({
@@ -208,7 +208,7 @@ def main(args):
 
             print('Connected by', addr)
 
-            start_new_thread(threaded_client, (client,echo_serv_port ))
+            start_new_thread(threaded_client, args=(client,echo_serv_port, ))
             
             thread_count += 1
 
