@@ -30,9 +30,11 @@ def valid_user(user, users):
 
 def register(data_list, users):
     if len(data_list) < 4:
+        print("\nNot enough arguments passed\n")
         return False
     
     if not valid_user(data_list[1], users):
+        print("\nInvalid user\n")
         return False
 
     return True
@@ -40,14 +42,17 @@ def register(data_list, users):
 
 def setup_dht(data_list, users, dht):
     if len(data_list) < 3:
+        print("\nNot enough arguments passed\n")
         return False, users, dht
 
     if not valid_user(data_list[2], users):
+        print("\nInvalid user\n")
         return False, users, dht
     
     n = int(data_list[1])
 
     if n < 2 or n > len(users):
+        print("\nn is not large enough a value\n")
         return False, users, dht
 
     # Remove 1 from n for the leader
