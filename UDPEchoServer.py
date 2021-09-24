@@ -3,30 +3,31 @@ import sys
 import time
 
 
-# serv_IP = socket.AF_INET  # Standard loopback interface address (localhost)
-
+ECHOMAX = 255 # Longest string to echo
 
 def die_with_error(error_message):
-    print(error_message)
-    exit()
+    sys.exit(error_message)
 
 
 def main(args):
     if len(args) != 2:
-        print("Error")
-        exit()
+        die_with_error(f"Usage:  {args[0]} <UDP SERVER PORT>\n")
     
-
 
     echo_serv_port = int(args[1])  # First arg: Use given port
 
-
-    print(f"server: Port server is listening to is: {echo_serv_port}\n")
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", echo_serv_port))
+        try:
+            s.bind(("", echo_serv_port))
+        except:
+            die_with_error("server: bind() failed")
+        
         s.listen()
+
+        print(f"server: Port server is listening to is: {echo_serv_port}\n")
+        
         conn, addr = s.accept()
+
         with conn:
             print('Connected by', addr)
             while True:
