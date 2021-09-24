@@ -50,6 +50,9 @@ def setup_dht(data_list, users, dht):
     if n < 2 or n > len(users):
         return False, users, dht
 
+    # Remove 1 from n for the leader
+    n -= 1
+
     leader = ()
     others = []
         
@@ -125,6 +128,9 @@ def main(args, users):
                             conn.sendall(b'SUCCESS')
                         else:
                             conn.sendall(b'FAILURE')
+
+                    else:
+                        conn.sendall(data)
 
                     # conn.sendall(data)
 
