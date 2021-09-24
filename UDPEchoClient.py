@@ -45,7 +45,7 @@ def main(args):
             
             data = s.recv(1024)
 
-            data_loaded = json.loads(data)
+            data_loaded = json.loads(data.decode('utf-8'))
             print(data_loaded)
             
             if data_loaded['res'] == 'SUCCESS':

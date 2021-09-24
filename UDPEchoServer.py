@@ -160,7 +160,7 @@ def main(args, users):
                                 })
 
                         # Send the servers response
-                        conn.sendall(response_data)
+                        conn.sendall(bytes(response_data, 'utf-8'))
                     else:
                         break
 
