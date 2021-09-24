@@ -43,17 +43,17 @@ def register(data_list, users):
 def setup_dht(data_list, users, dht):
     if len(data_list) < 3:
         print("\nNot enough arguments passed\n")
-        return False, users, dht
+        return False, users, dht, None
 
     if not valid_user(data_list[2], users):
         print("\nInvalid user\n")
-        return False, users, dht
+        return False, users, dht, None
     
     n = int(data_list[1])
 
     if n < 2 or n > len(users):
         print("\nn is not large enough a value\n")
-        return False, users, dht
+        return False, users, dht, None
 
     # Remove 1 from n for the leader
     n -= 1
@@ -99,45 +99,50 @@ def main(args, users):
         except:
             die_with_error("server: bind() failed")
         
-        s.listen()
 
-        print(f"server: Port server is listening to is: {echo_serv_port}\n")
+        while True:
         
-        conn, addr = s.accept()
+            s.listen()
 
-        with conn:
-            print('Connected by', addr)
-            while True:
-                data = conn.recv(1024)
-                
-                if data:
-                    # print(f'Received {data.decode("utf-8")}')
-                    print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
-                    data_list = data.decode('utf-8').split()
-                    if data_list[0] == 'register':
-                        if register(data_list, users):
-                            user = User(data_list[1], data_list[2], data_list[3])
-                            users[user.username] = user
-                            conn.sendall(b'SUCCESS')
+            print(f"server: Port server is listening to is: {echo_serv_port}\n")
+            
+            conn, addr = s.accept()
+
+            with conn:
+                print('Connected by', addr)
+                while conn:
+                    data = conn.recv(1024)
+                    
+                    if data:
+                        # print(f'Received {data.decode("utf-8")}')
+                        print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
+                        data_list = data.decode('utf-8').split()
+                        if data_list[0] == 'register':
+                            if register(data_list, users):
+                                user = User(data_list[1], data_list[2], data_list[3])
+                                users[user.username] = user
+                                conn.sendall(b'SUCCESS')
+                            else:
+                                conn.sendall(b'FAILURE')
+                        elif data_list[0] == 'setup-dht':
+                            # setup-dht ⟨n⟩ ⟨user-name⟩
+                            if dht_flag:
+                                conn.sendall(b'FAILURE')
+
+                            # Make call to setup_dht    
+                            valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
+                            print(three_tuples)
+                            if valid:
+                                conn.sendall(b'SUCCESS')
+                            else:
+                                conn.sendall(b'FAILURE')
+
                         else:
-                            conn.sendall(b'FAILURE')
-                    elif data_list[0] == 'setup-dht':
-                        # setup-dht ⟨n⟩ ⟨user-name⟩
-                        if dht_flag:
-                            conn.sendall(b'FAILURE')
+                            conn.sendall(data)
 
-                        # Make call to setup_dht    
-                        valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
+                        # conn.sendall(data)
 
-                        if valid:
-                            conn.sendall(b'SUCCESS')
-                        else:
-                            conn.sendall(b'FAILURE')
-
-                    else:
-                        conn.sendall(data)
-
-                    # conn.sendall(data)
+                print("Disconnected")
 
 
 if __name__ == "__main__":
