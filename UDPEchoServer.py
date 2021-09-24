@@ -15,7 +15,8 @@ class User:
     def __init__(self, username, ip_address, ports):
         self.username = username
         self.ipv4 = ip_address
-        self.ports = ports
+        # Convert ports to integers
+        self.ports = [int(port) for port in ports if port.isdigit()]
         self.state = 'Free'
 
 
