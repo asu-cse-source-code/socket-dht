@@ -97,7 +97,7 @@ def threaded_client(conn):
             data = conn.recv(BUFFER_SIZE)
 
             if data:
-                print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
+                # print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
                 data_list = data.decode('utf-8').split()
                 if data_list[0] == 'register':
                     if register(data_list, users):
