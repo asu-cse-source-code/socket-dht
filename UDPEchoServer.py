@@ -156,7 +156,7 @@ def main(args, users):
                         else:
                             response_data = json.dumps({
                                     'res': 'SUCCESS',
-                                    'data': data
+                                    'data': data.decode('utf-8')
                                 })
 
                         # Send the servers response
