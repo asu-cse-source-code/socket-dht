@@ -9,6 +9,7 @@ ECHOMAX = 255 # Longest string to echo
 BUFFER_SIZE = 1024
 dht_flag = False # Set to true when a DHT has been setup
 users = {} # Initialize empty dictionary of users
+thread_count = 0 # Initialize thread count to 0
 
 class User:
     def __init__(self, username, ip_address, ports):
@@ -34,7 +35,7 @@ def valid_user(user, users):
 
 
 def register(data_list, users):
-    if len(data_list) < 4:
+    if len(data_list) < 4 or len(data_list) > 7:
         print("\nNot enough arguments passed\n")
         return False
     
@@ -88,7 +89,33 @@ def setup_dht(data_list, users, dht):
     return True, users, dht, three_tuples
 
 
-def threaded_client(conn):
+def threaded_socket(socket, user, i):
+    global thread_count
+    try:
+        socket.bind((user.ipv4, user.ports[i]))
+    except:
+        print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
+    
+    # Add loop here so that we can disconnect and reconnect to server
+    while True:
+    
+        socket.listen()
+
+        print(f"server: Port server is listening to is: {user.ports[i]}\n")
+        
+        client, addr = socket.accept()
+
+        print('Connected by', addr)
+
+        start_new_thread(threaded_client, (client,socket, user.ports[i] ))
+        
+        thread_count += 1
+
+        print('Thread Number: ' + str(thread_count))
+
+
+def threaded_client(conn, socket, port):
+    global thread_count
     with conn:
         # conn.send(str.encode('Welcome to the Servern'))
         global dht_flag
@@ -97,16 +124,19 @@ def threaded_client(conn):
             data = conn.recv(BUFFER_SIZE)
 
             if data:
-                # print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
+                print(f"server: received string ``{data.decode('utf-8')}'' from client on port {port}\n")
                 data_list = data.decode('utf-8').split()
                 if data_list[0] == 'register':
                     if register(data_list, users):
-                        user = User(data_list[1], data_list[2], data_list[3])
+                        user = User(data_list[1], data_list[2], data_list[3:])
                         users[user.username] = user
                         response_data = json.dumps({
                             'res': 'SUCCESS',
                             'data': None
                         })
+                        i = 0
+                        while i < len(user.ports):
+                            start_new_thread(threaded_socket, (socket, user, i ))
                         
                     else:
                         response_data = json.dumps({
@@ -149,7 +179,7 @@ def threaded_client(conn):
 
 
 def main(args):
-    thread_count = 0 # Initialize thread count to 0
+    global thread_count
     
     dht = {}
 
@@ -176,7 +206,7 @@ def main(args):
 
             print('Connected by', addr)
 
-            start_new_thread(threaded_client, (client, ))
+            start_new_thread(threaded_client, (client,s,echo_serv_port ))
             
             thread_count += 1
 
