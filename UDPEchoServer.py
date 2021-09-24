@@ -84,11 +84,11 @@ def setup_dht(data_list, users, dht):
         if n == 0:
             break
     
-    three_tuples = [leader]
+    dht = [leader]
     for user in others:
-        three_tuples.append(user)
+        dht.append(user)
     
-    return True, users, dht, three_tuples
+    return True, users, dht
 
 
 def threaded_socket(user, i):
@@ -160,15 +160,14 @@ def threaded_client(conn, port):
                         })
                     else:
                         # Make call to setup_dht    
-                        valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
-                        print(three_tuples)
+                        valid, users, dht = setup_dht(data_list, users, dht)
+                        
                         if valid:
                             response_data = json.dumps({
                             'res': 'SUCCESS',
-                            'data': three_tuples
+                            'data': dht
                             })
                             dht_flag = True
-                            dht = [user for user in three_tuples]
                             print(dht)
                         else:
                             response_data = json.dumps({
