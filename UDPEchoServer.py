@@ -110,11 +110,10 @@ def main(args, users):
 
             with conn:
                 print('Connected by', addr)
-                while conn:
+                while True:
                     data = conn.recv(1024)
                     
                     if data:
-                        # print(f'Received {data.decode("utf-8")}')
                         print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
                         data_list = data.decode('utf-8').split()
                         if data_list[0] == 'register':
@@ -140,7 +139,8 @@ def main(args, users):
                         else:
                             conn.sendall(data)
 
-                        # conn.sendall(data)
+                    else:
+                        break
 
                 print("Disconnected")
 
