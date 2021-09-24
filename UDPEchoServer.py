@@ -6,7 +6,9 @@ import time
 
 
 ECHOMAX = 255 # Longest string to echo
-thread_count = 0 # Initialize thread count to 0
+BUFFER_SIZE = 1024
+dht_flag = False # Set to true when a DHT has been setup
+users = {} # Initialize empty dictionary of users
 
 class User:
     def __init__(self, username, ip_address, ports):
@@ -86,8 +88,69 @@ def setup_dht(data_list, users, dht):
     return True, users, dht, three_tuples
 
 
-def main(args, users):
-    dht_flag = False # Set to true when a DHT has been setup
+def threaded_client(conn):
+    with conn:
+        # conn.send(str.encode('Welcome to the Servern'))
+        global dht_flag
+        global users
+        while True:
+            data = conn.recv(BUFFER_SIZE)
+
+            if data:
+                print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
+                data_list = data.decode('utf-8').split()
+                if data_list[0] == 'register':
+                    if register(data_list, users):
+                        user = User(data_list[1], data_list[2], data_list[3])
+                        users[user.username] = user
+                        response_data = json.dumps({
+                            'res': 'SUCCESS',
+                            'data': None
+                        })
+                        
+                    else:
+                        response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': None
+                        })
+                elif data_list[0] == 'setup-dht':
+                    # setup-dht ⟨n⟩ ⟨user-name⟩
+                    if dht_flag:
+                        response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': None
+                        })
+                    else:
+                        # Make call to setup_dht    
+                        valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
+                        print(three_tuples)
+                        if valid:
+                            response_data = json.dumps({
+                            'res': 'SUCCESS',
+                            'data': three_tuples
+                            })
+                            dht_flag = True
+                        else:
+                            response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': None
+                            })
+
+                else:
+                    response_data = json.dumps({
+                            'res': 'SUCCESS',
+                            'data': data.decode('utf-8')
+                        })
+
+                # Send the servers response
+                conn.sendall(bytes(response_data, 'utf-8'))
+            else:
+                break
+
+
+def main(args):
+    thread_count = 0 # Initialize thread count to 0
+    
     dht = {}
 
     if len(args) != 2:
@@ -109,66 +172,17 @@ def main(args, users):
 
             print(f"server: Port server is listening to is: {echo_serv_port}\n")
             
-            conn, addr = s.accept()
+            client, addr = s.accept()
 
-            with conn:
-                print('Connected by', addr)
-                while True:
-                    data = conn.recv(1024)
+            print('Connected by', addr)
+
+            start_new_thread(threaded_client, (client, ))
+            
+            thread_count += 1
+
+            print('Thread Number: ' + str(thread_count))
                     
-                    if data:
-                        print(f"server: received string ``{data.decode('utf-8')}'' from client on IP address {addr[0]}\n")
-                        data_list = data.decode('utf-8').split()
-                        if data_list[0] == 'register':
-                            if register(data_list, users):
-                                user = User(data_list[1], data_list[2], data_list[3])
-                                users[user.username] = user
-                                response_data = json.dumps({
-                                    'res': 'SUCCESS',
-                                    'data': None
-                                })
-                                
-                            else:
-                                response_data = json.dumps({
-                                    'res': 'FAILURE',
-                                    'data': None
-                                })
-                        elif data_list[0] == 'setup-dht':
-                            # setup-dht ⟨n⟩ ⟨user-name⟩
-                            if dht_flag:
-                                response_data = json.dumps({
-                                    'res': 'FAILURE',
-                                    'data': None
-                                })
-                            else:
-                                # Make call to setup_dht    
-                                valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
-                                print(three_tuples)
-                                if valid:
-                                    response_data = json.dumps({
-                                    'res': 'SUCCESS',
-                                    'data': three_tuples
-                                })
-                                else:
-                                    response_data = json.dumps({
-                                    'res': 'FAILURE',
-                                    'data': None
-                                })
-
-                        else:
-                            response_data = json.dumps({
-                                    'res': 'SUCCESS',
-                                    'data': data.decode('utf-8')
-                                })
-
-                        # Send the servers response
-                        conn.sendall(bytes(response_data, 'utf-8'))
-                    else:
-                        break
-
-                print("Disconnected by", addr)
 
 
 if __name__ == "__main__":
-    all_users = {}
-    main(sys.argv, all_users)
+    main(sys.argv)
