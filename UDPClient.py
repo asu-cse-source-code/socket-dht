@@ -1,3 +1,4 @@
+from UDPServer import User
 import json
 import socket
 import sys
@@ -12,6 +13,14 @@ def die_with_error(error_message):
     sys.exit(error_message)
 
 
+def hash_pos(record):
+    ascii_sum = 0
+    for letter in record['Long Name']:
+        ascii_sum += ord(letter)
+    
+    return ascii_sum % 353
+
+
 def setup_local_dht():
     return [ [] for _ in range(HASH_SIZE) ]
 
@@ -23,6 +32,7 @@ def main(args):
 
     serv_IP = args[1]  # First arg: server IP address (dotted decimal)
     echo_serv_port = int(args[2])  # Second arg: Use given port
+    user_dht = []
 
 
     print(f"client: Arguments passed: server IP {serv_IP}, port {echo_serv_port}\n")
@@ -65,16 +75,17 @@ def main(args):
         while True:            
             echo_string = input("\nEnter command for the server: ")
 
-            if echo_string:
+            if echo_string and echo_string != 'listen':
                 print(f"\nClient: reads string ``{echo_string}''\n")
                 echo_string = bytes(echo_string, 'utf-8')
-            else:
+                try:
+                    s.sendall(echo_string)
+                except:
+                    die_with_error("client: sendall() error")
+            elif echo_string != 'listen':
                 die_with_error("client: error reading string to echo\n")
-            
-            try:
-                s.sendall(echo_string)
-            except:
-                die_with_error("client: sendall() error")
+            else:
+                print('Listening for server incoming data\n')
 
             
             data = s.recv(1024)
@@ -86,6 +97,24 @@ def main(args):
                 print("client: received SUCCESS response from server")
                 if data_loaded['data']:
                     print(f"\nclient: received data {data_loaded['data']} from server on IP address \n")
+                
+                if data_loaded['type'] == 'DHT':
+                    user_dht = data_loaded['data']
+                elif data_loaded['type'] == 'record':
+                    pos = hash_pos(data_loaded['data'])
+                    id = pos % len(user_dht)
+                    ports = user_dht[id][2]
+                    if echo_serv_port in ports:
+                        print("This is the desired location for record!")
+                        local_hash_table[pos].append(data_loaded['data'])
+                    else:
+                        print("This is not the desired location for the record")
+                        for i in range(len(user_dht) - 1):
+                            if echo_serv_port in user_dht[i][2]:
+                                addr = (user_dht[i+1][1], user_dht[i+1][2][0])
+                                s.sendto(data, addr)
+                                print("Sent data to next node")
+                        
             else:
                 die_with_error("client: recvfrom() failed")
 

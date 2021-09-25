@@ -1,4 +1,6 @@
+from csv import DictReader
 import json
+import os
 import socket
 import sys
 from _thread import *
@@ -8,6 +10,7 @@ import time
 ECHOMAX = 255 # Longest string to echo
 BUFFER_SIZE = 1024
 dht_flag = False # Set to true when a DHT has been setup
+creating_dht = False # Flag for when the dht is currently being created
 dht = [] # This is our DHT for state info
 users = {} # Initialize empty dictionary of users
 thread_count = 0 # Initialize thread count to 0
@@ -128,12 +131,14 @@ def threaded_socket(user, i):
             print('Thread Number: ' + str(thread_count))
 
 
-def threaded_client(conn, port):
-    global thread_count
-    global dht
+def threaded_client(conn, port, sock):
+    
     with conn:
         # conn.send(str.encode('Welcome to the Servern'))
+        global thread_count
+        global dht
         global dht_flag
+        global creating_dht
         global users
         while True:
             data = conn.recv(BUFFER_SIZE)
@@ -147,6 +152,7 @@ def threaded_client(conn, port):
                         users[user.username] = user
                         response_data = json.dumps({
                             'res': 'SUCCESS',
+                            'type': 'register',
                             'data': None
                         })
                         
@@ -172,10 +178,12 @@ def threaded_client(conn, port):
                         if valid:
                             response_data = json.dumps({
                             'res': 'SUCCESS',
+                            'type': 'DHT',
                             'data': three_tuples
                             })
                             dht_flag = True
-                            print(dht)
+                            creating_dht = True
+                            setup_all_local_dht(dht, sock)
                         else:
                             response_data = json.dumps({
                             'res': 'FAILURE',
@@ -185,6 +193,7 @@ def threaded_client(conn, port):
                 else:
                     response_data = json.dumps({
                             'res': 'SUCCESS',
+                            'type': 'echo',
                             'data': data.decode('utf-8')
                         })
 
@@ -193,6 +202,21 @@ def threaded_client(conn, port):
             else:
                 break
 
+
+def setup_all_local_dht(dht, sock):
+    with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
+        csv_reader = DictReader(data_file)
+        # Iterate over each row in the csv using reader object
+        addr = (dht[0].ipv4, dht[0].ports[0])
+        for record in csv_reader:
+            response_data = json.dumps({
+                'res': 'SUCCESS',
+                'type': 'record',
+                'data': record
+            })
+            
+            sock.sendto(response_data, addr)
+                
 
 def main(args):
     global thread_count
@@ -220,7 +244,7 @@ def main(args):
 
             print('Connected by', addr)
 
-            start_new_thread(threaded_client, (client,echo_serv_port, ))
+            start_new_thread(threaded_client, (client,echo_serv_port,s, ))
             
             thread_count += 1
 
