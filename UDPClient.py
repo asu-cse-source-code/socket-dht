@@ -46,6 +46,13 @@ def check_record(client, record):
     else:
         print("This is not the desired location for the record")
         print(f'The desired location is on id: {id}')
+        loops = 1
+        while client.record:
+            time.sleep(1)
+            print(f'\nawaiting record to send: {loops}')
+            if loops > 4:
+                print("\nTimeout occurred!\n\n")
+                break
         client.record = record
         print("Sent data to next node")
 
@@ -175,9 +182,6 @@ def main(args):
         client_port = int(args[4])
 
     client = Client(serv_IP, echo_serv_port, client_IP, client_port)
-
-
-    user_dht = []
 
     if client_port:
         print('Starting client topology socket\n')
