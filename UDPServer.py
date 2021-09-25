@@ -210,7 +210,7 @@ def threaded_client(conn, port):
             if data:
                 print(f"server: received string ``{data.decode('utf-8')}'' from client on port {port}\n")
                 data_list = data.decode('utf-8').split()
-                if creating_dht:
+                if creating_dht and data_list[0] != 'dht-complete':
                     response_data = json.dumps({
                             'res': 'FAILURE',
                             'data': 'Creating DHT'
