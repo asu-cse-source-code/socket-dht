@@ -124,7 +124,7 @@ def threaded_socket(user, i):
 
             print('Connected by', addr)
 
-            start_new_thread(threaded_client, (client, user.ports[i] ))
+            start_new_thread(threaded_client, (client, user.ports[i], sock ))
             
             thread_count += 1
 
@@ -215,7 +215,7 @@ def setup_all_local_dht(dht, sock):
                 'data': record
             })
             
-            sock.sendto(response_data, addr)
+            sock.sendto(bytes(response_data, 'utf-8'), addr)
                 
 
 def main(args):
