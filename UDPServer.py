@@ -22,7 +22,14 @@ class User:
         # Convert ports to integers
         self.ports = [int(port) for port in ports if port.isdigit()]
         self.state = 'Free'
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client = None
+        self.next = None
 
+
+def iterate_users(users):
+    for key, value in users.items():
+        print(f"User {key} has values: {vars(value)}")
 
 def die_with_error(error_message):
     sys.exit(error_message)
@@ -93,6 +100,8 @@ def setup_dht(data_list, users, dht):
     three_tuples = [leader]
     new_dht = [dht_leader]
     for user in dht_others:
+        # set the next to the following user
+        dht[-1].next = user.username
         new_dht.append(user)
 
     for user in others:
@@ -102,33 +111,36 @@ def setup_dht(data_list, users, dht):
 
 
 def threaded_socket(user, i):
+    global thread_count
+    thread_count += 1
+    print('Thread Number: ' + str(thread_count))
+    
     if not i:
         i = 0
-    global thread_count
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        try:
-            sock.bind((user.ipv4, user.ports[i]))
-        except Exception as error:
-            print(error)
-            print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
-            return
+    
+    try:
+        user.socket.bind((user.ipv4, user.ports[i]))
+    except Exception as error:
+        print(error)
+        print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
+        return
+    
+    # Add loop here so that we can disconnect and reconnect to server
+    while True:
+    
+        user.socket.listen()
+
+        print(f"server: Port server is listening to is: {user.ports[i]}\n")
         
-        # Add loop here so that we can disconnect and reconnect to server
-        while True:
+        client, addr = user.socket.accept()
+
+        print('Connected by', addr)
+
+        user.client = client
+
+        # start_new_thread(threaded_client, (client, user.ports[i], user.socket ))
         
-            sock.listen()
-
-            print(f"server: Port server is listening to is: {user.ports[i]}\n")
-            
-            client, addr = sock.accept()
-
-            print('Connected by', addr)
-
-            start_new_thread(threaded_client, (client, user.ports[i], sock ))
-            
-            thread_count += 1
-
-            print('Thread Number: ' + str(thread_count))
+        
 
 
 def threaded_client(conn, port, sock):
@@ -183,7 +195,7 @@ def threaded_client(conn, port, sock):
                             })
                             dht_flag = True
                             creating_dht = True
-                            setup_all_local_dht(dht, sock)
+                            # setup_all_local_dht(dht, sock)
                         else:
                             response_data = json.dumps({
                             'res': 'FAILURE',
@@ -198,6 +210,7 @@ def threaded_client(conn, port, sock):
                         })
 
                 # Send the servers response
+                iterate_users(users)
                 conn.sendall(bytes(response_data, 'utf-8'))
             else:
                 break
@@ -213,6 +226,7 @@ def setup_all_local_dht(dht, sock):
             response_data = json.dumps({
                 'res': 'SUCCESS',
                 'type': 'record',
+                'DHT': [vars(this_user) for this_user in dht],
                 'data': record
             })
             
