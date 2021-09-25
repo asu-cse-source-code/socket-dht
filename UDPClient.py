@@ -228,7 +228,7 @@ def listen(s, client):
             query_long_name = input("Enter query followed by the Long Name to query: ")
             client.query = ' '.join(query_long_name.split()[1:])
             print(f"Received query of {client.query}")
-            response = connect_query_nodes(client, ip=data_loaded['data'][1], port=data_loaded['data'][4])
+            response = connect_query_nodes(client, ip=data_loaded['data'][1], port=int(data_loaded['data'][4]))
             print(response)
     # else:
         # die_with_error("client: recvfrom() failed")
@@ -266,7 +266,7 @@ def client_topology(conn, client):
                 data_loaded = data.decode('utf-8')
                 try:
                     data_loaded = json.loads(data_loaded)
-                    print(f"client-topology: received message ``{data_loaded}''\n")
+                    # print(f"client-topology: received message ``{data_loaded}''\n")
                     if data_loaded['type'] == 'record':
                         check_record(client, record=data_loaded['data'])
                 except:
