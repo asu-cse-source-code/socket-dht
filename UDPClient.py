@@ -90,8 +90,8 @@ def connect_nodes(client, data):
                     s.sendall(record)
                 except:
                     die_with_error("client-node: sendall() error")
-            else:
-                time.sleep(1)
+            # else:
+            #     time.sleep(1)
 
 
 def listen(s, client):

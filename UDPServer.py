@@ -206,7 +206,12 @@ def threaded_client(conn, port):
             if data:
                 print(f"server: received string ``{data.decode('utf-8')}'' from client on port {port}\n")
                 data_list = data.decode('utf-8').split()
-                if data_list[0] == 'register':
+                if creating_dht:
+                    response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': 'Creating DHT'
+                        })
+                elif data_list[0] == 'register':
                     if register(data_list, users):
                         user = User(data_list[1], data_list[2], data_list[3:])
                         users[user.username] = user
@@ -253,6 +258,19 @@ def threaded_client(conn, port):
                         response_data = json.dumps({
                                 'res': 'SUCCESS',
                                 'type': 'deregister',
+                                'data': None
+                            })
+                    else:
+                        response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': None
+                        })
+                elif data_list[0] == 'dht-complete':
+                    if creating_dht and data_list[1] == dht[0].username:
+                        creating_dht = False
+                        response_data = json.dumps({
+                                'res': 'SUCCESS',
+                                'type': 'dht-setup',
                                 'data': None
                             })
                     else:
