@@ -22,6 +22,7 @@ class Client:
         self.username = None
         self.n = None
         self.local_hash_table = setup_local_hash_table()
+        self.user_dht = None
 
 
 def die_with_error(error_message):
@@ -64,7 +65,7 @@ def setup_local_hash_table():
 
 def connect_nodes(client, data):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((data['ip'], data['port']))
+        s.connect((data['ip'], int(data['port'])))
 
         print("Successfully connected with next node!\n Awaiting records to forward\n\n")
 
@@ -85,7 +86,7 @@ def connect_nodes(client, data):
                 time.sleep(1)
 
 
-def listen(s, local_hash_table, user_dht, client):
+def listen(s, client):
     data = s.recv(BUFFER_SIZE)
     data_loaded = data.decode('utf-8')
 
@@ -94,7 +95,7 @@ def listen(s, local_hash_table, user_dht, client):
             data_loaded = json.loads(data_loaded)
         except:
             print("error with json.load")
-            return local_hash_table, user_dht
+            return
     print(data_loaded)
     
     if data_loaded and data_loaded['res'] == 'SUCCESS':
@@ -120,8 +121,6 @@ def listen(s, local_hash_table, user_dht, client):
                     die_with_error("client: sendall() error sending success string")
     # else:
         # die_with_error("client: recvfrom() failed")
-
-    return local_hash_table, user_dht
 
 
 def initialize_client_topology(client):
@@ -188,13 +187,8 @@ def main(args):
 
     print(f"client: Arguments passed: server IP {client.serv_ip}, port {client.serv_port}\n")
 
-    local_hash_table = []
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((client.serv_ip, client.serv_port))
-        
-        local_hash_table = setup_local_hash_table()
-        print("\nSuccessfully initialized local hash table\n")
 
         while True:            
             echo_string = input("\nEnter command for the server: ")
@@ -211,10 +205,10 @@ def main(args):
             else:
                 print('Listening for server incoming data\n')
                 while True:
-                    local_hash_table, user_dht = listen(s, local_hash_table, user_dht, client)
-                    print(local_hash_table)
+                    listen(s, client)
+                    print(client.local_hash_table)
             
-            local_hash_table, user_dht = listen(s, local_hash_table, user_dht, client)
+            listen(s, client)
 
 
 if __name__ == "__main__":

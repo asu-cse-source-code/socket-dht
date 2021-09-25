@@ -268,7 +268,7 @@ def threaded_client(conn, port):
                         })
 
                 # Send the servers response
-                iterate_users(users)
+                # iterate_users(users)
                 conn.sendall(bytes(response_data, 'utf-8'))
             else:
                 break

@@ -1,0 +1,21 @@
+./server 5000 &
+
+./client 10.120.70.106 5000
+
+Ifconfig to get IP address 'inet' of server
+
+python UDPServer.py 65432
+
+python UDPClient.py 10.120.70.145 65432
+
+register austin 10.120.70.145 54321 54322
+register gretchen 10.120.70.145 54323 54324
+register randy 10.120.70.145 54325 54326
+register john 10.120.70.145 54327 54328
+
+python UDPClient.py 10.120.70.145 54321 10.120.70.145 54322
+python UDPClient.py 10.120.70.145 54323 10.120.70.145 54324
+python UDPClient.py 10.120.70.145 65435 10.120.70.145 54326
+python UDPClient.py 10.120.70.145 65437 10.120.70.145 54328
+
+setup-dht 2 austin
