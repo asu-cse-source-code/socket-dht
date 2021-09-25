@@ -215,7 +215,7 @@ def listen(s, client):
             client.next_node_ip = data_loaded['data']['ip']
             client.next_node_port = int(data_loaded['data']['port'])
 
-            start_new_thread(connect_nodes, (client, 'records' ))
+            start_new_thread(connect_nodes, (client, ))
             print("Began node connection thread")
             if (client.id == 0):
                 setup_all_local_dht(client)
