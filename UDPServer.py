@@ -176,7 +176,7 @@ def threaded_socket(user):
         
             sock.listen()
 
-            print(f"server: Port server is listening to is: {user.port}\n")
+            print(f"server: Port server is listening to is: {user.client_port}\n")
             
             client, addr = sock.accept()
 
