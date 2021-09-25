@@ -286,6 +286,7 @@ def client_query_conn(client, conn):
 
 def main(args):
     if not (len(args) == 3 or len(args) == 7):
+        print(len(args))
         die_with_error(f"Usage: {args[0]} <Server IP address> <Server Port> <Client IP address> <Client Port> <Client Query Port>\n")
     
     serv_IP = args[1]  # First arg: server IP address (dotted decimal)
