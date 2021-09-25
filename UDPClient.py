@@ -7,17 +7,24 @@ import sys
 import time
 
 HASH_SIZE = 353 # Size to initialize the local hash table to
-BUFFER_SIZE = 3072 # Max bytes to take in
+BUFFER_SIZE = 4096 # Max bytes to take in
 
 
 class Client:
-    def __init__(self, serv_ip, serv_port, client_ip, client_port):
+    def __init__(self, serv_ip, serv_port, client_ip, client_port, query_ip, query_port):
         self.serv_ip = serv_ip
         self.serv_port = serv_port
         self.client_ip = client_ip
         self.client_port = client_port
+        self.query_ip = query_ip
+        self.query_port = query_port
+        self.next_node_ip = None
+        self.next_node_port = None
+        self.next_node_query_ip = None
+        self.next_node_query_port = None
         self.record = None
-        self.client_conn = None
+        self.query = None
+        # self.client_conn = None
         self.id = None
         self.username = None
         self.n = None
@@ -35,6 +42,25 @@ def hash_pos(record):
         ascii_sum += ord(letter)
     
     return ascii_sum % 353
+
+
+def run_query(client, long_name):
+    pos = hash_pos({'Long Name': ' '.join(long_name)})
+    id = pos % client.n
+    if id == client.id:
+        print("This is the correct node for query")
+        records = client.local_hash_table[pos]
+        for record in records:
+            if record['Long Name'] == ' '.join(long_name):
+                return 'SUCCESS', record
+        
+        return 'FAILURE', None
+        
+    else:
+        print("This isn't the correct node for query")
+        client.query = ' '.joing(long_name)
+        connect_nodes(client, 'query')
+
 
 
 def check_record(client, record):
@@ -64,34 +90,75 @@ def setup_all_local_dht(client):
         # Iterate over each row in the csv using reader object
         for record in csv_reader:
             check_record(client, record)
-            
-            
+
 
 def setup_local_hash_table():
     return [ [] for _ in range(HASH_SIZE) ]
 
 
-def connect_nodes(client, data):
+def connect_nodes(client, purpose):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((data['ip'], int(data['port'])))
+        if purpose == 'records':
+            s.connect((client.next_node_ip, int(client.next_node_port)))
 
-        print("Successfully connected with next node!\n Awaiting records to forward\n\n")
+            print("Successfully connected with next node!\n Awaiting records to forward\n\n")
+            while True:
+                if client.record:
+                    response_data = json.dumps({
+                        'res': 'SUCCESS',
+                        'type': 'record',
+                        'data': client.record,
+                    })
+                    record = bytes(response_data, 'utf-8')
+                    client.record = None
+                    try:
+                        s.sendall(record)
+                    except:
+                        die_with_error("client-node: sendall() error")
+                # else:
+                #     time.sleep(1)
+        elif purpose == 'query':
+            for item in client.user_dht:
+                if item[1] == client.next_node_ip:
+                    client.next_node_query_ip = item[1]
+                    client.next_node_query_port = item[4]
+            s.connect((client.next_node_query_ip, int(client.next_node_query_port)))
 
-        while True:
-            if client.record:
-                response_data = json.dumps({
-                    'res': 'SUCCESS',
-                    'type': 'record',
-                    'data': client.record,
-                })
-                record = bytes(response_data, 'utf-8')
-                client.record = None
+            print("Successfully connected with next node!\n Awaiting query to forward\n\n")
+            
+            if client.query:
+                query_info = 'query ' + client.query
+                query = bytes(query_info, 'utf-8')
+                client.query = None
                 try:
-                    s.sendall(record)
+                    s.sendall(query)
+                    print('Sent query now listening for response from next node!\n')
+                    query_response = query_listen(s)
+                    return query_response
                 except:
                     die_with_error("client-node: sendall() error")
-            # else:
-            #     time.sleep(1)
+                    return None
+                # else:
+                #     time.sleep(1)
+            else:
+                print("missing query")
+                return None
+
+
+def query_listen(s):
+    data = s.recv(BUFFER_SIZE)
+    data_loaded = data.decode('utf-8')
+
+    if data_loaded:
+        try:
+            data_loaded = json.loads(data_loaded)
+        except:
+            print("error with json.load")
+            return None
+        print(f'Query response: {data_loaded}\n')
+        return data_loaded
+    else:
+        return None
 
 
 def listen(s, client):
@@ -112,13 +179,16 @@ def listen(s, client):
             print(f"\nclient: received data {data_loaded['data']} from server on IP address {client.serv_ip}\n")
         
         if data_loaded['type'] == 'DHT':
-            user_dht = data_loaded['data']
+            client.user_dht = data_loaded['data']
         elif data_loaded['type'] == 'topology':
             # Set some client values
             client.username = data_loaded['data']['username']
             client.n = data_loaded['data']['n']
             client.id = data_loaded['data']['id']
-            start_new_thread(connect_nodes, (client, data_loaded['data']))
+            client.next_node_ip = data['ip']
+            client.next_node_port = int(data['port'])
+
+            start_new_thread(connect_nodes, (client, 'records' ))
             print("Began node connection thread")
             if (client.id == 0):
                 setup_all_local_dht(client)
@@ -172,6 +242,47 @@ def client_topology(conn, client):
                 break
 
 
+def client_query_socket(client):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind((client.query_ip, client.query_port))
+        except:
+            die_with_error("query-server: bind() failed")
+        
+        # Add loop here so that we can disconnect and reconnect to server
+        while True:
+        
+            s.listen()
+
+            print(f"query-server: Port server is listening to is: {client.query_port}\n")
+            
+            conn, addr = s.accept()
+
+            print('Connected by', addr)
+
+            start_new_thread(client_query_conn, (client, conn, ))
+
+
+def client_query_conn(client, conn):
+    with conn:
+        while True:
+            data = conn.recv(1024)
+
+            if data:
+                data_list = data.decode('utf-8').split()
+                print(f"query-conn: received message ``{data_list}''\n")
+                if data_list[0] == 'query':
+                    response, record = run_query(client, data_list[1:])
+
+                else:
+                    response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': None
+                        })
+                    conn.sendall(bytes(response_data, 'utf-8'))
+            else:
+                break
+
 
 def main(args):
     if len(args) < 3:
@@ -179,13 +290,15 @@ def main(args):
     
     serv_IP = args[1]  # First arg: server IP address (dotted decimal)
     echo_serv_port = int(args[2])  # Second arg: Use given port
-    client_IP = None
-    client_port = None
+    client_port = client_IP = None
+    query_ip = query_port = None
     if (len(args) > 3):
         client_IP = args[3]
         client_port = int(args[4])
+        query_ip = args[5]
+        query_port = int(args[6])
 
-    client = Client(serv_IP, echo_serv_port, client_IP, client_port)
+    client = Client(serv_IP, echo_serv_port, client_IP, client_port, query_ip, query_port)
 
     if client_port:
         print('Starting client topology socket\n')
@@ -214,7 +327,7 @@ def main(args):
                 print('Listening for server incoming data\n')
                 while True:
                     listen(s, client)
-                    print(client.local_hash_table)
+                    # print(client.local_hash_table)
             
             listen(s, client)
 

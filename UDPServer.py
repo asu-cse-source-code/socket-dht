@@ -22,8 +22,9 @@ class User:
         # Convert port to integers
         self.port = int(ports[0])
         self.client_port = None
-        if len(ports) > 1:
+        if len(ports) > 2:
             self.client_port = ports[1]
+            self.client_query_port = ports[2]
         self.state = 'Free'
         # self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client = None
@@ -114,7 +115,7 @@ def setup_dht(data_list, users, dht):
         elif value.state != 'InDHT':
             value.state = 'InDHT'
             users[key] = value
-            others.append((value.username, value.ipv4, value.port))
+            others.append((value.username, value.ipv4, value.port, value.client_port, value.client_query_port))
             dht_others.append(value)
             n -= 1
         
