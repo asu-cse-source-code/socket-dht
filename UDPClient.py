@@ -66,7 +66,7 @@ def run_query(client, long_name):
     else:
         print("This isn't the correct node for query")
         client.query = ' '.joing(long_name)
-        return connect_nodes(client, 'query')
+        return connect_query_nodes(client, None, None)
 
 
 
@@ -103,56 +103,65 @@ def setup_local_hash_table():
     return [ [] for _ in range(HASH_SIZE) ]
 
 
-def connect_nodes(client, purpose):
+def connect_nodes(client):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        if purpose == 'records':
-            s.connect((client.next_node_ip, int(client.next_node_port)))
+        s.connect((client.next_node_ip, int(client.next_node_port)))
 
-            print("Successfully connected with next node!\n Awaiting records to forward\n\n")
-            while True:
-                if client.record:
-                    response_data = json.dumps({
-                        'res': 'SUCCESS',
-                        'type': 'record',
-                        'data': client.record,
-                    })
-                    record = bytes(response_data, 'utf-8')
-                    client.record = None
-                    try:
-                        s.sendall(record)
-                    except:
-                        die_with_error("client-node: sendall() error")
-                # else:
-                #     time.sleep(1)
-        elif purpose == 'query':
-            for item in client.user_dht:
-                if item[1] == client.next_node_ip:
-                    client.next_node_query_ip = item[1]
-                    client.next_node_query_port = item[4]
-            s.connect((client.next_node_query_ip, int(client.next_node_query_port)))
-
-            print("Successfully connected with next node!\n Awaiting query to forward\n\n")
-            
-            if client.query:
-                query_info = 'query ' + client.query
-                query = bytes(query_info, 'utf-8')
-                client.query = None
+        print("Successfully connected with next node!\n Awaiting records to forward\n\n")
+        while True:
+            if client.record:
+                response_data = json.dumps({
+                    'res': 'SUCCESS',
+                    'type': 'record',
+                    'data': client.record,
+                })
+                record = bytes(response_data, 'utf-8')
+                client.record = None
                 try:
-                    s.sendall(query)
-                    print('Sent query now listening for response from next node!\n')
-                    query_response = query_listen(s)
-                    return query_response
+                    s.sendall(record)
                 except:
                     die_with_error("client-node: sendall() error")
-                # else:
-                #     time.sleep(1)
-            else:
-                print("missing query")
-                return json.dumps({
-                        'res': 'FAILURE',
-                        'type': 'query-result',
-                        'data': None,
-                    })
+            # else:
+            #     time.sleep(1)
+
+
+def connect_query_nodes(client, ip, port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+
+        if not ip:
+            if not client.next_node_query_ip:
+                for item in client.user_dht:
+                    if item[1] == client.next_node_ip:
+                        client.next_node_query_ip = item[1]
+                        client.next_node_query_port = item[4]
+
+            s.connect((client.next_node_query_ip, int(client.next_node_query_port)))
+            print("Successfully connected with next node!\n Awaiting query to forward\n\n")
+        else:
+            s.connect((ip, port))
+            print("Successfully connected with given node!\n Awaiting query to forward\n\n")
+        
+        
+        if client.query:
+            query_info = 'query ' + client.query
+            query = bytes(query_info, 'utf-8')
+            client.query = None
+            try:
+                s.sendall(query)
+                print('Sent query now listening for response from next node!\n')
+                query_response = query_listen(s)
+                return query_response
+            except:
+                die_with_error("client-node: sendall() error")
+            # else:
+            #     time.sleep(1)
+        else:
+            print("missing query")
+            return json.dumps({
+                    'res': 'FAILURE',
+                    'type': 'query-result',
+                    'data': None,
+                })
 
 
 def query_listen(s):
@@ -216,7 +225,8 @@ def listen(s, client):
                 except:
                     die_with_error("client: sendall() error sending success string")
         elif data_loaded['type'] == 'query-response':
-            query_command = run_query
+            response = connect_query_nodes(client, ip=data_loaded['data'][1], port=data_loaded['data'][4])
+            print(response)
     # else:
         # die_with_error("client: recvfrom() failed")
 
