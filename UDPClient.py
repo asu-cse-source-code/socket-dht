@@ -116,8 +116,8 @@ def listen(s, local_hash_table, user_dht, client):
                     s.sendall(success_string)
                 except:
                     die_with_error("client: sendall() error sending success string")
-    else:
-        die_with_error("client: recvfrom() failed")
+    # else:
+        # die_with_error("client: recvfrom() failed")
 
     return local_hash_table, user_dht
 
