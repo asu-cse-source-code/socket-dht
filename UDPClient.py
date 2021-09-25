@@ -25,7 +25,7 @@ def setup_local_dht():
     return [ [] for _ in range(HASH_SIZE) ]
 
 
-def listen(s, local_hash_table, port, serv_IP):
+def listen(s, local_hash_table, user_dht, port, serv_IP):
     data = s.recv(2048)
     data_loaded = data.decode('utf-8')
     # print(f'data decoded: {data_loaded}')
@@ -123,10 +123,10 @@ def main(args):
             else:
                 print('Listening for server incoming data\n')
                 while True:
-                    local_hash_table, user_dht = listen(s, local_hash_table, echo_serv_port, serv_IP)
+                    local_hash_table, user_dht = listen(s, local_hash_table, user_dht, echo_serv_port, serv_IP)
                     print(local_hash_table)
             
-            local_hash_table, user_dht = listen(s, local_hash_table, echo_serv_port, serv_IP)
+            local_hash_table, user_dht = listen(s, local_hash_table, user_dht, echo_serv_port, serv_IP)
 
             # if len(data.decode('utf-8')) > ECHOMAX:
             #     die_with_error("client: recvfrom() failed")
