@@ -180,7 +180,7 @@ def main(args):
 
     if client_port:
         print('Starting client topology socket\n')
-        start_new_thread(initialize_client_topology, (client))
+        start_new_thread(initialize_client_topology, (client, ))
         
 
 
