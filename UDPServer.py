@@ -232,7 +232,7 @@ def setup_all_local_dht(dht, sock):
             })
             
             # sock.sendto(bytes(response_data, 'utf-8'), addr)
-            print(vars(dht[0]))
+            # print(vars(dht[0]))
             dht[0].client.sendall(bytes(response_data, 'utf-8'))
                 
 
