@@ -225,6 +225,9 @@ def listen(s, client):
                 except:
                     die_with_error("client: sendall() error sending success string")
         elif data_loaded['type'] == 'query-response':
+            query_long_name = input("Enter query followed by the Long Name to query: ")
+            client.query = ' '.join(query_long_name.split()[1:])
+            print(f"Received query of {client.query}")
             response = connect_query_nodes(client, ip=data_loaded['data'][1], port=data_loaded['data'][4])
             print(response)
     # else:
