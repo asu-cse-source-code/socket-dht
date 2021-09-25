@@ -196,7 +196,7 @@ def threaded_client(conn, port, sock):
                             })
                             dht_flag = True
                             creating_dht = True
-                            setup_all_local_dht(dht, sock)
+                            setup_all_local_dht(dht, three_tuples)
                         else:
                             response_data = json.dumps({
                             'res': 'FAILURE',
@@ -217,7 +217,7 @@ def threaded_client(conn, port, sock):
                 break
 
 
-def setup_all_local_dht(dht, sock):
+def setup_all_local_dht(dht, three_tuples):
     with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
         csv_reader = DictReader(data_file)
         # Iterate over each row in the csv using reader object
@@ -227,6 +227,7 @@ def setup_all_local_dht(dht, sock):
             response_data = json.dumps({
                 'res': 'SUCCESS',
                 'type': 'record',
+                'dht': three_tuples,
                 'data': record
             })
             

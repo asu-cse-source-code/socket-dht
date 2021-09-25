@@ -103,6 +103,7 @@ def main(args):
                 if data_loaded['type'] == 'DHT':
                     user_dht = data_loaded['data']
                 elif data_loaded['type'] == 'record':
+                    user_dht = data_loaded['dht']
                     pos = hash_pos(data_loaded['data'])
                     id = pos % len(user_dht)
                     ports = user_dht[id][2]
