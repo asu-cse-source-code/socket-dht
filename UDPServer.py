@@ -227,12 +227,12 @@ def setup_all_local_dht(dht, sock):
             response_data = json.dumps({
                 'res': 'SUCCESS',
                 'type': 'record',
-                # 'DHT': [vars(this_user) for this_user in dht],
                 'data': record
             })
             
             # sock.sendto(bytes(response_data, 'utf-8'), addr)
             # print(vars(dht[0]))
+            print(response_data)
             dht[0].client.sendall(bytes(response_data, 'utf-8'))
                 
 
