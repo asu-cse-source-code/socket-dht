@@ -120,7 +120,7 @@ def connect_nodes(client):
                 try:
                     s.sendall(record)
                 except:
-                    die_with_error("client-node: sendall() error")
+                    die_with_error("client-node: sendall() error within records connect nodes")
             # else:
             #     time.sleep(1)
 
@@ -152,7 +152,7 @@ def connect_query_nodes(client, ip, port):
                 query_response = query_listen(s)
                 return query_response
             except:
-                die_with_error("client-node: sendall() error")
+                die_with_error("client-node: sendall() error within query connection")
             # else:
             #     time.sleep(1)
         else:
