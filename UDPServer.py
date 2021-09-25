@@ -22,7 +22,7 @@ class User:
         # Convert ports to integers
         self.ports = [int(port) for port in ports if port.isdigit()]
         self.state = 'Free'
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client = None
         self.next = None
 
@@ -118,27 +118,28 @@ def threaded_socket(user, i):
     if not i:
         i = 0
     
-    try:
-        user.socket.bind((user.ipv4, user.ports[i]))
-    except Exception as error:
-        print(error)
-        print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
-        return
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind((user.ipv4, user.ports[i]))
+        except Exception as error:
+            print(error)
+            print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
+            return
     
-    # Add loop here so that we can disconnect and reconnect to server
-    while True:
-    
-        user.socket.listen()
-
-        print(f"server: Port server is listening to is: {user.ports[i]}\n")
+        # Add loop here so that we can disconnect and reconnect to server
+        while True:
         
-        client, addr = user.socket.accept()
+            sock.listen()
 
-        print('Connected by', addr)
+            print(f"server: Port server is listening to is: {user.ports[i]}\n")
+            
+            client, addr = sock.accept()
 
-        user.client = client
+            print('Connected by', addr)
 
-        # start_new_thread(threaded_client, (client, user.ports[i], user.socket ))
+            user.client = client
+
+            # start_new_thread(threaded_client, (client, user.ports[i], user.socket ))
         
         
 
