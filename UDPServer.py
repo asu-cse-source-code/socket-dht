@@ -208,6 +208,7 @@ def setup_all_local_dht(dht, sock):
         csv_reader = DictReader(data_file)
         # Iterate over each row in the csv using reader object
         addr = (dht[0].ipv4, dht[0].ports[0])
+        print(f"address: {addr}")
         for record in csv_reader:
             response_data = json.dumps({
                 'res': 'SUCCESS',
