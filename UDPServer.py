@@ -76,6 +76,7 @@ def deregister(data_list):
     if user_to_deregister.state != 'Free':
         return False
     else:
+        users[user_to_deregister.username].registered = False
         del users[user_to_deregister.username]
 
     return True
@@ -189,6 +190,8 @@ def threaded_socket(user):
             thread_count += 1
 
             print('Thread Number: ' + str(thread_count))
+        
+        print("User disconnected from socket due to deregister!\n")
         
 
 def threaded_client(conn, port):
