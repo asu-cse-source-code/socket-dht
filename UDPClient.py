@@ -88,13 +88,14 @@ def main(args):
                 print('Listening for server incoming data\n')
 
             
-            data = s.recv(1024)
-            data_decoded = data.decode('utf-8')
-            print(f'data decoded: {data_decoded}')
-            data_loaded = json.loads(data_decoded)
+            data = s.recv(2048)
+            data_loaded = data.decode('utf-8')
+            # print(f'data decoded: {data_loaded}')
+            if data_loaded:
+                data_loaded = json.loads(data_loaded)
             print(data_loaded)
             
-            if data_loaded['res'] == 'SUCCESS':
+            if data_loaded and data_loaded['res'] == 'SUCCESS':
                 print("client: received SUCCESS response from server")
                 if data_loaded['data']:
                     print(f"\nclient: received data {data_loaded['data']} from server on IP address {serv_IP}\n")
