@@ -53,6 +53,7 @@ def check_record(client, record):
             if loops > 4:
                 print("\nTimeout occurred!\n\n")
                 break
+            loops += 1
         client.record = record
         print("Sent data to next node")
 
@@ -160,10 +161,13 @@ def client_topology(conn, client):
 
             if data:
                 data_loaded = data.decode('utf-8')
-                data_loaded = json.loads(data_loaded)
-                print(f"client-topology: received message ``{data_loaded}''\n")
-                if data_loaded['type'] == 'record':
-                    check_record(client, record=data_loaded['data'])
+                try:
+                    data_loaded = json.loads(data_loaded)
+                    print(f"client-topology: received message ``{data_loaded}''\n")
+                    if data_loaded['type'] == 'record':
+                        check_record(client, record=data_loaded['data'])
+                except:
+                    print("error with json.load")
             else:
                 break
 
