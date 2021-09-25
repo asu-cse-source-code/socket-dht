@@ -22,8 +22,7 @@ class User:
         # Convert port to integers
         self.port = int(ports[0])
         self.client_port = self.client_query_port = None
-        print(len(ports))
-        if len(ports) > 2:
+        if len(ports) > 1:
             self.client_port = ports[1]
             self.client_query_port = ports[2]
         self.state = 'Free'
