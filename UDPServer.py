@@ -235,6 +235,7 @@ def setup_all_local_dht(dht, three_tuples):
             # print(vars(dht[0]))
             print(response_data)
             dht[0].client.sendall(bytes(response_data, 'utf-8'))
+            time.sleep(2)
                 
 
 def main(args):
