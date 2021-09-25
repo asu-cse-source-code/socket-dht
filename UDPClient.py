@@ -185,8 +185,8 @@ def listen(s, client):
             client.username = data_loaded['data']['username']
             client.n = data_loaded['data']['n']
             client.id = data_loaded['data']['id']
-            client.next_node_ip = data['ip']
-            client.next_node_port = int(data['port'])
+            client.next_node_ip = data_loaded['data']['ip']
+            client.next_node_port = int(data_loaded['data']['port'])
 
             start_new_thread(connect_nodes, (client, 'records' ))
             print("Began node connection thread")
