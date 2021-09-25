@@ -295,8 +295,8 @@ def main(args):
     if (len(args) > 3):
         client_IP = args[3]
         client_port = int(args[4])
-        query_ip = args[5]
-        query_port = int(args[6])
+        query_ip = client_IP
+        query_port = int(args[5])
 
     client = Client(serv_IP, echo_serv_port, client_IP, client_port, query_ip, query_port)
 
