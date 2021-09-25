@@ -30,7 +30,11 @@ def listen(s, local_hash_table, user_dht, port, serv_IP):
     data_loaded = data.decode('utf-8')
     # print(f'data decoded: {data_loaded}')
     if data_loaded:
-        data_loaded = json.loads(data_loaded)
+        try:
+            data_loaded = json.loads(data_loaded)
+        except:
+            print("error with json.load")
+            return local_hash_table, user_dht
     print(data_loaded)
     
     if data_loaded and data_loaded['res'] == 'SUCCESS':
