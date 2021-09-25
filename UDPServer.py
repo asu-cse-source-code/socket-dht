@@ -14,7 +14,6 @@ creating_dht = False # Flag for when the dht is currently being created
 dht = [] # This is our DHT for state info
 users = {} # Initialize empty dictionary of users
 thread_count = 0 # Initialize thread count to 0
-three_tuples = ()
 
 
 class User:
@@ -112,7 +111,7 @@ def setup_dht(data_list, users, dht):
         if key == data_list[2]:
             value.state = 'Leader'
             users[key] = dht_leader = value
-            leader = (value.username, value.ipv4, value.port)
+            leader = (value.username, value.ipv4, value.port, value.client_port, value.client_query_port)
 
         elif value.state != 'InDHT':
             value.state = 'InDHT'
@@ -214,7 +213,6 @@ def threaded_client(conn, port):
         global dht_flag
         global creating_dht
         global users
-        global three_tuples
         while True:
             data = conn.recv(BUFFER_SIZE)
 
