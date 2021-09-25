@@ -25,6 +25,42 @@ def setup_local_dht():
     return [ [] for _ in range(HASH_SIZE) ]
 
 
+def listen(s, local_hash_table, port, serv_IP):
+    data = s.recv(2048)
+    data_loaded = data.decode('utf-8')
+    # print(f'data decoded: {data_loaded}')
+    if data_loaded:
+        data_loaded = json.loads(data_loaded)
+    print(data_loaded)
+    
+    if data_loaded and data_loaded['res'] == 'SUCCESS':
+        print("client: received SUCCESS response from server")
+        if data_loaded['data']:
+            print(f"\nclient: received data {data_loaded['data']} from server on IP address {serv_IP}\n")
+        
+        if data_loaded['type'] == 'DHT':
+            user_dht = data_loaded['data']
+        elif data_loaded['type'] == 'record':
+            user_dht = data_loaded['dht']
+            pos = hash_pos(data_loaded['data'])
+            id = pos % len(user_dht)
+            ports = user_dht[id][2]
+            if port in ports:
+                print("This is the desired location for record!")
+                local_hash_table[pos].append(data_loaded['data'])
+            else:
+                print("This is not the desired location for the record")
+                for i in range(len(user_dht) - 1):
+                    if port in user_dht[i][2]:
+                        addr = (user_dht[i+1][1], user_dht[i+1][2][0])
+                        s.sendto(data, addr)
+                        print("Sent data to next node")
+                
+    else:
+        die_with_error("client: recvfrom() failed")
+
+    return local_hash_table, user_dht
+
 def main(args):
     if len(args) < 3:
         die_with_error(f"Usage: {args[0]} <Server IP address> <Echo Port>\n")
@@ -86,40 +122,11 @@ def main(args):
                 die_with_error("client: error reading string to echo\n")
             else:
                 print('Listening for server incoming data\n')
-
+                while True:
+                    local_hash_table, user_dht = listen(s, local_hash_table, echo_serv_port, serv_IP)
+                    print(local_hash_table)
             
-            data = s.recv(2048)
-            data_loaded = data.decode('utf-8')
-            # print(f'data decoded: {data_loaded}')
-            if data_loaded:
-                data_loaded = json.loads(data_loaded)
-            print(data_loaded)
-            
-            if data_loaded and data_loaded['res'] == 'SUCCESS':
-                print("client: received SUCCESS response from server")
-                if data_loaded['data']:
-                    print(f"\nclient: received data {data_loaded['data']} from server on IP address {serv_IP}\n")
-                
-                if data_loaded['type'] == 'DHT':
-                    user_dht = data_loaded['data']
-                elif data_loaded['type'] == 'record':
-                    user_dht = data_loaded['dht']
-                    pos = hash_pos(data_loaded['data'])
-                    id = pos % len(user_dht)
-                    ports = user_dht[id][2]
-                    if echo_serv_port in ports:
-                        print("This is the desired location for record!")
-                        local_hash_table[pos].append(data_loaded['data'])
-                    else:
-                        print("This is not the desired location for the record")
-                        for i in range(len(user_dht) - 1):
-                            if echo_serv_port in user_dht[i][2]:
-                                addr = (user_dht[i+1][1], user_dht[i+1][2][0])
-                                s.sendto(data, addr)
-                                print("Sent data to next node")
-                        
-            else:
-                die_with_error("client: recvfrom() failed")
+            local_hash_table, user_dht = listen(s, local_hash_table, echo_serv_port, serv_IP)
 
             # if len(data.decode('utf-8')) > ECHOMAX:
             #     die_with_error("client: recvfrom() failed")
