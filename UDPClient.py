@@ -337,6 +337,10 @@ def main(args):
     if client_port:
         print('Starting client topology socket\n')
         start_new_thread(initialize_client_topology, (client, ))
+
+    if query_port:
+        print("Starting client query socket\n")
+        start_new_thread(client_query_socket, (client, ))
         
 
 
