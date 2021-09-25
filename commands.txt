@@ -1,6 +1,4 @@
-./server 5000 &
-
-./client 10.120.70.106 5000
+// Within ASU servers
 
 Ifconfig to get IP address 'inet' of server
 
@@ -19,3 +17,24 @@ python UDPClient.py 10.120.70.145 64325 10.120.70.145 64326 64332
 python UDPClient.py 10.120.70.145 64327 10.120.70.145 64328 64333
 
 setup-dht 2 austin
+query-dht randy
+
+
+// Locally
+python UDPServer.py 65432
+
+python UDPClient.py 127.0.0.1 65432
+
+register austin 127.0.0.1 64321 64322 64330
+register gretchen 127.0.0.1 64323 64324 64331
+register randy 127.0.0.1 64325 64326 64332
+register john 127.0.0.1 64327 64328 64333
+
+python UDPClient.py 127.0.0.1 64321 127.0.0.1 64322 64330
+python UDPClient.py 127.0.0.1 64323 127.0.0.1 64324 64331
+python UDPClient.py 127.0.0.1 64325 127.0.0.1 64326 64332
+python UDPClient.py 127.0.0.1 64327 127.0.0.1 64328 64333
+
+setup-dht 2 austin
+
+query-dht randy

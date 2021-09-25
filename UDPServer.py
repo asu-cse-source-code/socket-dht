@@ -14,6 +14,7 @@ creating_dht = False # Flag for when the dht is currently being created
 dht = [] # This is our DHT for state info
 users = {} # Initialize empty dictionary of users
 thread_count = 0 # Initialize thread count to 0
+three_tuples = ()
 
 
 class User:
@@ -213,6 +214,7 @@ def threaded_client(conn, port):
         global dht_flag
         global creating_dht
         global users
+        global three_tuples
         while True:
             data = conn.recv(BUFFER_SIZE)
 

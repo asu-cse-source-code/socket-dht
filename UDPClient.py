@@ -92,7 +92,7 @@ def check_record(client, record):
 
 
 def setup_all_local_dht(client):
-    with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
+    with open(os.path.join(sys.path[0], "StatsCountrySmall.csv"), "r") as data_file:
         csv_reader = DictReader(data_file)
         # Iterate over each row in the csv using reader object
         for record in csv_reader:
@@ -355,7 +355,8 @@ def main(args):
                 try:
                     s.sendall(echo_string)
                     listen(s, client)
-                except:
+                except Exception as error:
+                    print(error)
                     die_with_error("client: sendall() error")
             elif echo_string != 'listen':
                 die_with_error("client: error reading string to echo\n")
