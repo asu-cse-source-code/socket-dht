@@ -89,8 +89,9 @@ def main(args):
 
             
             data = s.recv(1024)
-
-            data_loaded = json.loads(data.decode('utf-8'))
+            data_decoded = data.decode('utf-8')
+            print(f'data decoded: {data_decoded}')
+            data_loaded = json.loads(data_decoded)
             print(data_loaded)
             
             if data_loaded['res'] == 'SUCCESS':
