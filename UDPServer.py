@@ -227,7 +227,7 @@ def setup_all_local_dht(dht, sock):
             response_data = json.dumps({
                 'res': 'SUCCESS',
                 'type': 'record',
-                'DHT': [vars(this_user) for this_user in dht],
+                # 'DHT': [vars(this_user) for this_user in dht],
                 'data': record
             })
             
