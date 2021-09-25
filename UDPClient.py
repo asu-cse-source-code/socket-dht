@@ -285,8 +285,8 @@ def client_query_conn(client, conn):
 
 
 def main(args):
-    if len(args) < 3:
-        die_with_error(f"Usage: {args[0]} <Server IP address> <Server Port> <Client IP address> <Client Port>\n")
+    if len(args) < 3 or (len(args) > 3 and len(args) < 7):
+        die_with_error(f"Usage: {args[0]} <Server IP address> <Server Port> <Client IP address> <Client Port> <Client Query Port>\n")
     
     serv_IP = args[1]  # First arg: server IP address (dotted decimal)
     echo_serv_port = int(args[2])  # Second arg: Use given port
