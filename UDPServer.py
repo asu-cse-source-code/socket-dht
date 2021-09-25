@@ -101,7 +101,7 @@ def setup_dht(data_list, users, dht):
     new_dht = [dht_leader]
     for user in dht_others:
         # set the next to the following user
-        dht[-1].next = user.username
+        new_dht[-1].next = user.username
         new_dht.append(user)
 
     for user in others:
