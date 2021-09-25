@@ -105,7 +105,7 @@ def listen(s, local_hash_table, user_dht, client):
         if data_loaded['type'] == 'DHT':
             user_dht = data_loaded['data']
         elif data_loaded['type'] == 'topology':
-            client.username = data_loaded['username']['n']
+            client.username = data_loaded['data']['username']
             client.n = data_loaded['data']['n']
             start_new_thread(connect_nodes, (client, data_loaded['data']))
             print("Began node connection thread")
