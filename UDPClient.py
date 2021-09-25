@@ -96,7 +96,7 @@ def main(args):
             if data_loaded['res'] == 'SUCCESS':
                 print("client: received SUCCESS response from server")
                 if data_loaded['data']:
-                    print(f"\nclient: received data {data_loaded['data']} from server on IP address \n")
+                    print(f"\nclient: received data {data_loaded['data']} from server on IP address {serv_IP}\n")
                 
                 if data_loaded['type'] == 'DHT':
                     user_dht = data_loaded['data']

@@ -196,7 +196,7 @@ def threaded_client(conn, port, sock):
                             })
                             dht_flag = True
                             creating_dht = True
-                            # setup_all_local_dht(dht, sock)
+                            setup_all_local_dht(dht, sock)
                         else:
                             response_data = json.dumps({
                             'res': 'FAILURE',
@@ -231,7 +231,9 @@ def setup_all_local_dht(dht, sock):
                 'data': record
             })
             
-            sock.sendto(bytes(response_data, 'utf-8'), addr)
+            # sock.sendto(bytes(response_data, 'utf-8'), addr)
+            print(vars(dht[0]))
+            dht[0].client.sendall(bytes(response_data, 'utf-8'))
                 
 
 def main(args):
