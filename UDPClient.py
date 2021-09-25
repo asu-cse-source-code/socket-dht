@@ -105,11 +105,13 @@ def listen(s, local_hash_table, user_dht, client):
         if data_loaded['type'] == 'DHT':
             user_dht = data_loaded['data']
         elif data_loaded['type'] == 'topology':
+            # Set some client values
             client.username = data_loaded['data']['username']
             client.n = data_loaded['data']['n']
+            client.id = data_loaded['data']['id']
             start_new_thread(connect_nodes, (client, data_loaded['data']))
             print("Began node connection thread")
-            if (data_loaded['data']['id'] == 0):
+            if (client.id == 0):
                 setup_all_local_dht(client)
                 success_string = bytes(f'dht-complete {client.username}', 'utf-8')
                 try:
