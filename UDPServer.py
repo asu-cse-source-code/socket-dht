@@ -163,7 +163,7 @@ def setup_topology(dht):
 
 def valid_query(data_list, users):
     for key, value in users.items():
-        if key == data_list[0]:
+        if key == data_list[1]:
             return value.state == 'Free'
 
     return False
