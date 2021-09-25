@@ -74,7 +74,7 @@ def connect_nodes(client, data):
                 response_data = json.dumps({
                     'res': 'SUCCESS',
                     'type': 'record',
-                    'data': record,
+                    'data': client.record,
                 })
                 record = bytes(response_data, 'utf-8')
                 client.record = None
