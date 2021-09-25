@@ -1,4 +1,3 @@
-from csv import DictReader
 import json
 import os
 import socket
@@ -15,16 +14,21 @@ dht = [] # This is our DHT for state info
 users = {} # Initialize empty dictionary of users
 thread_count = 0 # Initialize thread count to 0
 
+
 class User:
     def __init__(self, username, ip_address, ports):
         self.username = username
         self.ipv4 = ip_address
-        # Convert ports to integers
-        self.ports = [int(port) for port in ports if port.isdigit()]
+        # Convert port to integers
+        self.port = int(ports[0])
+        self.client_port = None
+        if len(ports) > 1:
+            self.client_port = ports[1]
         self.state = 'Free'
         # self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client = None
         self.next = None
+        self.registered = True
 
 
 def iterate_users(users):
@@ -47,8 +51,12 @@ def valid_user(user, users):
 
 
 def register(data_list, users):
-    if len(data_list) < 4 or len(data_list) > 7:
-        print("\nNot enough arguments passed\n")
+    if len(data_list) < 4 or len(data_list) > 6:
+        print("\nInvalid number of arguments passed\n")
+        return False
+
+    if len(data_list[1]) > 15:
+        print("Username too long")
         return False
     
     if not valid_user(data_list[1], users):
@@ -57,6 +65,21 @@ def register(data_list, users):
 
     return True
 
+
+def deregister(data_list):
+    global users
+
+    if len(data_list) != 2:
+        return False
+    
+    user_to_deregister = users[data_list[1]]
+    if user_to_deregister.state != 'Free':
+        return False
+    else:
+        del users[user_to_deregister.username]
+
+    return True
+    
 
 def setup_dht(data_list, users, dht):
     if len(data_list) < 3:
@@ -70,7 +93,7 @@ def setup_dht(data_list, users, dht):
     n = int(data_list[1])
 
     if n < 2 or n > len(users):
-        print("\nn is not large enough a value\n")
+        print("\nInvalid n value\n")
         return False, users, dht, None
 
     # Remove 1 from n for the leader
@@ -85,12 +108,12 @@ def setup_dht(data_list, users, dht):
         if key == data_list[2]:
             value.state = 'Leader'
             users[key] = dht_leader = value
-            leader = (value.username, value.ipv4, value.ports)
+            leader = (value.username, value.ipv4, value.port)
 
         elif value.state != 'InDHT':
             value.state = 'InDHT'
             users[key] = value
-            others.append((value.username, value.ipv4, value.ports))
+            others.append((value.username, value.ipv4, value.port))
             dht_others.append(value)
             n -= 1
         
@@ -110,28 +133,50 @@ def setup_dht(data_list, users, dht):
     return True, users, new_dht, three_tuples
 
 
-def threaded_socket(user, i):
+def setup_topology(dht):
+    i = 0
+    id = 0
+    n = len(dht)
+    for user in dht:
+        if i+1 < n:
+            i += 1
+        else:
+            i = 0
+        response_data = json.dumps({
+            'res': 'SUCCESS',
+            'type': 'topology',
+            'data': {
+                'n': n,
+                'id': id,
+                'username': user.username,
+                'ip': dht[i].ipv4,
+                'port': dht[i].client_port,
+            }
+        })
+        print(response_data)
+        user.client.sendall(bytes(response_data, 'utf-8'))
+        id += 1
+
+
+def threaded_socket(user):
     global thread_count
     thread_count += 1
     print('Thread Number: ' + str(thread_count))
     
-    if not i:
-        i = 0
-    
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         try:
-            sock.bind((user.ipv4, user.ports[i]))
+            sock.bind((user.ipv4, user.port))
         except Exception as error:
             print(error)
-            print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.ports[i]} ")
+            print(f"server: bind() failed for user: {user.username} ip: {user.ipv4} port: {user.port} ")
             return
     
         # Add loop here so that we can disconnect and reconnect to server
-        while True:
+        while user.registered:
         
             sock.listen()
 
-            print(f"server: Port server is listening to is: {user.ports[i]}\n")
+            print(f"server: Port server is listening to is: {user.port}\n")
             
             client, addr = sock.accept()
 
@@ -139,12 +184,14 @@ def threaded_socket(user, i):
 
             user.client = client
 
-            # start_new_thread(threaded_client, (client, user.ports[i], user.socket ))
-        
+            start_new_thread(threaded_client, (client, user.port ))
+            
+            thread_count += 1
+
+            print('Thread Number: ' + str(thread_count))
         
 
-
-def threaded_client(conn, port, sock):
+def threaded_client(conn, port):
     
     with conn:
         # conn.send(str.encode('Welcome to the Servern'))
@@ -169,8 +216,8 @@ def threaded_client(conn, port, sock):
                             'data': None
                         })
                         
-                        for i in range(len(user.ports)):
-                            start_new_thread(threaded_socket, (user,i, ))
+                        # for i in range(len(user.ports)):
+                        start_new_thread(threaded_socket, (user, ))
                         
                     else:
                         response_data = json.dumps({
@@ -187,22 +234,32 @@ def threaded_client(conn, port, sock):
                     else:
                         # Make call to setup_dht    
                         valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
-                        print(three_tuples)
                         if valid:
                             response_data = json.dumps({
-                            'res': 'SUCCESS',
-                            'type': 'DHT',
-                            'data': three_tuples
+                                'res': 'SUCCESS',
+                                'type': 'DHT',
+                                'data': three_tuples
                             })
                             dht_flag = True
                             creating_dht = True
-                            setup_all_local_dht(dht, three_tuples)
+                            setup_topology(dht)
                         else:
                             response_data = json.dumps({
+                                'res': 'FAILURE',
+                                'data': None
+                            })
+                elif data_list[0] == 'deregister':
+                    if deregister(data_list):
+                        response_data = json.dumps({
+                                'res': 'SUCCESS',
+                                'type': 'deregister',
+                                'data': None
+                            })
+                    else:
+                        response_data = json.dumps({
                             'res': 'FAILURE',
                             'data': None
-                            })
-
+                        })
                 else:
                     response_data = json.dumps({
                             'res': 'SUCCESS',
@@ -215,27 +272,6 @@ def threaded_client(conn, port, sock):
                 conn.sendall(bytes(response_data, 'utf-8'))
             else:
                 break
-
-
-def setup_all_local_dht(dht, three_tuples):
-    with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
-        csv_reader = DictReader(data_file)
-        # Iterate over each row in the csv using reader object
-        addr = (dht[0].ipv4, dht[0].ports[0])
-        print(f"address: {addr}")
-        for record in csv_reader:
-            response_data = json.dumps({
-                'res': 'SUCCESS',
-                'type': 'record',
-                'dht': three_tuples,
-                'data': record
-            })
-            
-            # sock.sendto(bytes(response_data, 'utf-8'), addr)
-            # print(vars(dht[0]))
-            print(response_data)
-            dht[0].client.sendall(bytes(response_data, 'utf-8'))
-            time.sleep(2)
                 
 
 def main(args):
@@ -264,7 +300,7 @@ def main(args):
 
             print('Connected by', addr)
 
-            start_new_thread(threaded_client, (client,echo_serv_port,s, ))
+            start_new_thread(threaded_client, (client,echo_serv_port, ))
             
             thread_count += 1
 
