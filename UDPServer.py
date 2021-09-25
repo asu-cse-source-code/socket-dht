@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import socket
 import sys
 from _thread import *
@@ -160,6 +161,14 @@ def setup_topology(dht):
         id += 1
 
 
+def valid_query(data_list, users):
+    for key, value in users.items():
+        if key == data_list[0]:
+            return value.state == 'Free'
+
+    return False
+
+
 def threaded_socket(user):
     global thread_count
     thread_count += 1
@@ -269,6 +278,19 @@ def threaded_client(conn, port):
                             'res': 'FAILURE',
                             'data': None
                         })
+                elif data_list[0] == 'query-dht':
+                    if valid_query(data_list, users):
+                        random_user_index = random.randrange(len(three_tuples))
+                        response_data = json.dumps({
+                                'res': 'SUCCESS',
+                                'type': 'query-response',
+                                'data': three_tuples[random_user_index]
+                            })
+                    else:
+                        response_data = json.dumps({
+                            'res': 'FAILURE',
+                            'data': None
+                        })
                 elif data_list[0] == 'dht-complete':
                     if creating_dht and data_list[1] == dht[0].username:
                         creating_dht = False
@@ -284,9 +306,8 @@ def threaded_client(conn, port):
                         })
                 else:
                     response_data = json.dumps({
-                            'res': 'SUCCESS',
-                            'type': 'echo',
-                            'data': data.decode('utf-8')
+                            'res': 'FAILURE',
+                            'data': 'Unknown Command'
                         })
 
                 # Send the servers response

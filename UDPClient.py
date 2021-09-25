@@ -52,14 +52,21 @@ def run_query(client, long_name):
         records = client.local_hash_table[pos]
         for record in records:
             if record['Long Name'] == ' '.join(long_name):
-                return 'SUCCESS', record
+                return json.dumps({
+                        'res': 'SUCCESS',
+                        'type': 'query-result',
+                        'data': record,
+                    })
         
-        return 'FAILURE', None
-        
+        return json.dumps({
+                        'res': 'FAILURE',
+                        'type': 'query-result',
+                        'data': None,
+                    })
     else:
         print("This isn't the correct node for query")
         client.query = ' '.joing(long_name)
-        connect_nodes(client, 'query')
+        return connect_nodes(client, 'query')
 
 
 
@@ -137,12 +144,15 @@ def connect_nodes(client, purpose):
                     return query_response
                 except:
                     die_with_error("client-node: sendall() error")
-                    return None
                 # else:
                 #     time.sleep(1)
             else:
                 print("missing query")
-                return None
+                return json.dumps({
+                        'res': 'FAILURE',
+                        'type': 'query-result',
+                        'data': None,
+                    })
 
 
 def query_listen(s):
@@ -154,11 +164,19 @@ def query_listen(s):
             data_loaded = json.loads(data_loaded)
         except:
             print("error with json.load")
-            return None
+            return json.dumps({
+                        'res': 'FAILURE',
+                        'type': 'query-result',
+                        'data': None,
+                    })
         print(f'Query response: {data_loaded}\n')
         return data_loaded
     else:
-        return None
+        return json.dumps({
+                        'res': 'FAILURE',
+                        'type': 'query-result',
+                        'data': None,
+                    })
 
 
 def listen(s, client):
@@ -197,6 +215,8 @@ def listen(s, client):
                     s.sendall(success_string)
                 except:
                     die_with_error("client: sendall() error sending success string")
+        elif data_loaded['type'] == 'query-response':
+            query_command = run_query
     # else:
         # die_with_error("client: recvfrom() failed")
 
@@ -266,13 +286,14 @@ def client_query_socket(client):
 def client_query_conn(client, conn):
     with conn:
         while True:
-            data = conn.recv(1024)
+            data = conn.recv(BUFFER_SIZE)
 
             if data:
                 data_list = data.decode('utf-8').split()
                 print(f"query-conn: received message ``{data_list}''\n")
                 if data_list[0] == 'query':
-                    response, record = run_query(client, data_list[1:])
+                    response = run_query(client, data_list[1:])
+                    print('Query response: ', response)
 
                 else:
                     response_data = json.dumps({
@@ -314,11 +335,13 @@ def main(args):
         while True:            
             echo_string = input("\nEnter command for the server: ")
 
+            
             if echo_string and echo_string != 'listen':
                 print(f"\nClient: reads string ``{echo_string}''\n")
                 echo_string = bytes(echo_string, 'utf-8')
                 try:
                     s.sendall(echo_string)
+                    listen(s, client)
                 except:
                     die_with_error("client: sendall() error")
             elif echo_string != 'listen':
@@ -328,8 +351,6 @@ def main(args):
                 while True:
                     listen(s, client)
                     # print(client.local_hash_table)
-            
-            listen(s, client)
 
 
 if __name__ == "__main__":
