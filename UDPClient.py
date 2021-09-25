@@ -170,7 +170,7 @@ def main(args):
     client_IP = None
     client_port = None
     if (len(args) > 3):
-        client_IP = int(args[3])
+        client_IP = args[3]
         client_port = int(args[4])
 
     client = Client(serv_IP, echo_serv_port, client_IP, client_port)
