@@ -37,19 +37,21 @@ def iterate_users(users):
     for key, value in users.items():
         print(f"User {key} has values: {vars(value)}")
 
+
 def die_with_error(error_message):
     '''Function to kill the program and ouput the error message'''
     sys.exit(error_message)
 
 
-def send_response(conn, res, type, data=None):
+def send_response(sock, addr, res, type, data=None):
     '''Function to send response from server to client to avoid repetition'''
     response_data = json.dumps({
             'res': res,
             'type': type,
             'data': data
         })
-    conn.sendall(bytes(response_data, 'utf-8'))
+
+    sock.sendto(bytes(response_data, 'utf-8'), addr)
 
 
 def valid_user(user, users):
@@ -206,7 +208,7 @@ def threaded_socket(user):
     thread_count += 1
     print('Thread Number: ' + str(thread_count))
     
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         try:
             sock.bind((user.ipv4, user.port))
         except Exception as error:
@@ -236,7 +238,7 @@ def threaded_socket(user):
         print("User disconnected from socket due to deregister!\n")
         
 
-def threaded_client(conn, port):
+def threaded_client(sock, data, address):
     '''
         This function is used exclusively with threading similar to threaded_socket
         What this function does is keep the connection alive between the client and 
@@ -244,68 +246,65 @@ def threaded_client(conn, port):
         
         This function contains the logic for when the client sends a command
     '''
-    with conn:
-        # conn.send(str.encode('Welcome to the Servern'))
-        global thread_count
-        global dht
-        global dht_flag
-        global creating_dht
-        global users
-        while True:
-            data = conn.recv(BUFFER_SIZE)
+    global thread_count
+    global dht
+    global dht_flag
+    global creating_dht
+    global users
+    three_tuples = None
 
-            # If the received data isn't null
-            if data:
-                print(f"server: received string ``{data.decode('utf-8')}'' from client on port {port}\n")
-                data_list = data.decode('utf-8').split()
-                command = data_list[0]
-                if creating_dht and command != 'dht-complete':
-                    send_response(conn, res='FAILURE', type='error', data='Creating DHT')
-                elif command == 'register':
-                    if register(data_list, users):
-                        user = User(data_list[1], data_list[2], data_list[3:])
-                        users[user.username] = user
-                        start_new_thread(threaded_socket, (user, ))
-                        
-                        send_response(conn, res='SUCCESS', type='register')
-                    else:
-                        send_response(conn, res='FAILURE', type='error')
-                elif command == 'setup-dht':
-                    # setup-dht ⟨n⟩ ⟨user-name⟩
-                    if dht_flag:
-                        send_response(conn, res='FAILURE', type='error', data='DHT already created')
-                    else:
-                        # Make call to setup_dht
-                        valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
-                        if valid:
-                            dht_flag = True
-                            creating_dht = True
-                            setup_topology(dht)
-                            
-                            send_response(conn, res='SUCCESS', type='DHT', data=three_tuples)
-                        else:
-                            send_response(conn, res='FAILURE', type='error')
-                elif command == 'deregister':
-                    if deregister(data_list):
-                        send_response(conn, res='SUCCESS', type='deregister')
-                    else:
-                        send_response(conn, res='FAILURE', type='error')
-                elif command == 'query-dht':
-                    if valid_query(data_list, users):
-                        random_user_index = random.randrange(len(three_tuples))
-                        send_response(conn, res='SUCCESS', type='query-response', data=three_tuples[random_user_index])
-                    else:
-                        send_response(conn, res='FAILURE', type='error')
-                elif command == 'dht-complete':
-                    if creating_dht and data_list[1] == dht[0].username:
-                        creating_dht = False
-                        send_response(conn, res='SUCCESS', type='dht-setup')
-                    else:
-                        send_response(conn, res='FAILURE', type='error')
-                else:
-                    send_response(conn, res='FAILURE', type='error', data='Unkown command')
+    # If the received data isn't null
+    if data:
+        print(f"server: received string ``{data.decode('utf-8')}'' from client on ip: {address[0]} port {address[1]}\n")
+        data_list = data.decode('utf-8').split()
+        command = data_list[0]
+        if creating_dht and command != 'dht-complete':
+            send_response(sock, addr=address, res='FAILURE', type='error', data='Creating DHT')
+        elif command == 'register':
+            if register(data_list, users):
+                user = User(data_list[1], data_list[2], data_list[3:])
+                users[user.username] = user
+                start_new_thread(threaded_socket, (user, ))
+                
+                send_response(sock, addr=address, res='SUCCESS', type='register')
             else:
-                break
+                send_response(sock, addr=address, res='FAILURE', type='error')
+        elif command == 'setup-dht':
+            # setup-dht ⟨n⟩ ⟨user-name⟩
+            if dht_flag:
+                send_response(sock, addr=address, res='FAILURE', type='error', data='DHT already created')
+            else:
+                # Make call to setup_dht
+                valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
+                if valid:
+                    dht_flag = True
+                    creating_dht = True
+                    setup_topology(dht)
+                    
+                    send_response(sock, addr=address, res='SUCCESS', type='DHT', data=three_tuples)
+                else:
+                    send_response(sock, addr=address, res='FAILURE', type='error')
+        elif command == 'deregister':
+            if deregister(data_list):
+                send_response(sock, addr=address, res='SUCCESS', type='deregister')
+            else:
+                send_response(sock, addr=address, res='FAILURE', type='error')
+        elif command == 'query-dht':
+            if valid_query(data_list, users):
+                random_user_index = random.randrange(len(three_tuples))
+                send_response(sock, addr=address, res='SUCCESS', type='query-response', data=three_tuples[random_user_index])
+            else:
+                send_response(sock, addr=address, res='FAILURE', type='error')
+        elif command == 'dht-complete':
+            if creating_dht and data_list[1] == dht[0].username:
+                creating_dht = False
+                send_response(sock, addr=address, res='SUCCESS', type='dht-setup')
+            else:
+                send_response(sock, addr=address, res='FAILURE', type='error')
+        else:
+            send_response(sock, addr=address, res='FAILURE', type='error', data='Unkown command')
+    else:
+        print("empty message received")
 
 
 def main(args):
@@ -325,20 +324,12 @@ def main(args):
         
         # Add loop here so that we can disconnect and reconnect to server
         while True:
-        
-            s.listen()
 
             print(f"server: Port server is listening to is: {echo_serv_port}\n")
             
-            client, addr = s.accept()
+            message, address = s.recvfrom(BUFFER_SIZE)
 
-            print('Connected by', addr)
-
-            start_new_thread(threaded_client, (client,echo_serv_port, ))
-            
-            thread_count += 1
-
-            print('Thread Number: ' + str(thread_count))
+            threaded_client(s, message, address)
                     
 
 
