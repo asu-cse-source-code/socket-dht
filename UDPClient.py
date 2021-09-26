@@ -11,6 +11,7 @@ BUFFER_SIZE = 4096 # Max bytes to take in
 
 
 class Client:
+    '''The Client class that has a single instance for each client running'''
     def __init__(self, serv_ip, serv_port, client_ip, client_port, query_ip, query_port):
         self.serv_ip = serv_ip
         self.serv_port = serv_port
@@ -34,10 +35,12 @@ class Client:
 
 
 def die_with_error(error_message):
+    '''Function to kill the program and ouput the error message'''
     sys.exit(error_message)
 
 
 def hash_pos(record):
+    '''Calculate the pos variable with this hash function'''
     ascii_sum = 0
     for letter in record['Long Name']:
         ascii_sum += ord(letter)
@@ -46,6 +49,10 @@ def hash_pos(record):
 
 
 def run_query(client, long_name):
+    '''
+        Take in the query command and either return response with record found
+        or call the next node with the same query command
+    '''
     pos = hash_pos({'Long Name': ' '.join(long_name)})
     id = pos % client.n
     if id == client.id:
@@ -73,6 +80,11 @@ def run_query(client, long_name):
 
 
 def check_record(client, record):
+    '''
+        Check given record and see if it is stored on the local hash table
+        If it is not set the client.record value to the record which will
+        trigger the query socket and send the query command to next node
+    '''
     pos = hash_pos(record)
     id = pos % client.n
     if id == client.id:
@@ -82,6 +94,7 @@ def check_record(client, record):
         # This is not the desired location for the record
         # print(f'The desired location is on id: {id}')
         loops = 1
+        # While loop that iterates until the current record is sent to next node
         while client.record:
             time.sleep(1)
             # print(f'\nawaiting record to send: {loops}')
@@ -94,7 +107,8 @@ def check_record(client, record):
 
 
 def setup_all_local_dht(client):
-    with open(os.path.join(sys.path[0], "StatsCountrySmall.csv"), "r") as data_file:
+    '''This function will read in the records one by one and call to check the record'''
+    with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
         csv_reader = DictReader(data_file)
         # Iterate over each row in the csv using reader object
         for record in csv_reader:
@@ -102,10 +116,15 @@ def setup_all_local_dht(client):
 
 
 def setup_local_hash_table():
+    '''Simple function used to initialize the local hash table to the constant size'''
     return [ [] for _ in range(HASH_SIZE) ]
 
 
 def connect_nodes(client):
+    '''
+        This function will connect the current node with the node to the right
+        in the DHT
+    '''
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((client.next_node_ip, int(client.next_node_port)))
 
@@ -128,6 +147,9 @@ def connect_nodes(client):
 
 
 def connect_query_nodes(client, ip, port):
+    '''
+        Connect to given query address or the query address of the next node
+    '''
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
         if not ip:
@@ -137,6 +159,7 @@ def connect_query_nodes(client, ip, port):
             s.connect((ip, port))
             print("Successfully connected with given node!\n Awaiting query to forward\n\n")
         
+        # This check will avoid looping through the nodes infinitely
         if client.began_query and not ip:
             client.began_query = False
             print("Query looped through and didn't find record")
@@ -169,6 +192,9 @@ def connect_query_nodes(client, ip, port):
 
 
 def query_listen(s):
+    '''
+        Function that will listen for the response from neighbor node from the query sent
+    '''
     data = s.recv(BUFFER_SIZE)
     data_loaded = data.decode('utf-8')
 
@@ -193,6 +219,9 @@ def query_listen(s):
 
 
 def listen(s, client):
+    '''
+        Listen function that will listen to all responses from the server connected to client
+    '''
     data = s.recv(BUFFER_SIZE)
     data_loaded = data.decode('utf-8')
 
@@ -241,6 +270,10 @@ def listen(s, client):
 
 
 def initialize_client_topology(client):
+    '''
+        Connecting socket between current client and the neighboring client
+        Once connection is made a new thread will be created to listen to that connection
+    '''
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         try:
             sock.bind((client.client_ip, client.client_port))
@@ -264,6 +297,9 @@ def initialize_client_topology(client):
 
 
 def client_topology(conn, client):
+    '''
+        Will keep the connection with neighboring client until there is a disconnect on their end
+    '''
     with conn:
         while True:
             data = conn.recv(BUFFER_SIZE)
@@ -282,6 +318,10 @@ def client_topology(conn, client):
 
 
 def client_query_socket(client):
+    '''
+        Set up the socket for query port which will accept all connections and then start
+        a new listening thread
+    '''
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
             s.bind((client.query_ip, client.query_port))
@@ -303,6 +343,9 @@ def client_query_socket(client):
 
 
 def client_query_conn(client, conn):
+    '''
+        Socket connection listener that will listen for query commands
+    '''
     with conn:
         while True:
             data = conn.recv(BUFFER_SIZE)
