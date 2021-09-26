@@ -313,7 +313,16 @@ def client_query_conn(client, conn):
                 if data_list[0] == 'query':
                     response = run_query(client, data_list[1:])
                     print('Query response: ', response)
-                    conn.sendall(bytes(response, 'utf-8'))
+                    try:
+                        if isinstance(response, str):
+                            conn.sendall(bytes(response, 'utf-8'))
+                        else:
+                            print("response isn't a string")
+                            conn.sendall(response)
+                    except Exception as error:
+                        print(error)
+                        print('Exception trying to send query response')
+
 
                 else:
                     response_data = json.dumps({
