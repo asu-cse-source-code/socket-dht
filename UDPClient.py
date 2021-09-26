@@ -49,7 +49,7 @@ def run_query(client, long_name):
     pos = hash_pos({'Long Name': ' '.join(long_name)})
     id = pos % client.n
     if id == client.id:
-        print("This is the correct node for query")
+        # This is the correct node for query
         records = client.local_hash_table[pos]
         for record in records:
             if record['Long Name'] == ' '.join(long_name):
@@ -65,7 +65,7 @@ def run_query(client, long_name):
                         'data': None,
                     })
     else:
-        print("This isn't the correct node for query")
+        # This isn't the correct node for query
         client.query = ' '.join(long_name)
         result = connect_query_nodes(client, None, None)
         return result
@@ -76,21 +76,21 @@ def check_record(client, record):
     pos = hash_pos(record)
     id = pos % client.n
     if id == client.id:
-        print("This is the desired location for record!")
+        # This is the desired location for record!
         client.local_hash_table[pos].append(record)
     else:
-        print("This is not the desired location for the record")
-        print(f'The desired location is on id: {id}')
+        # This is not the desired location for the record
+        # print(f'The desired location is on id: {id}')
         loops = 1
         while client.record:
             time.sleep(1)
-            print(f'\nawaiting record to send: {loops}')
+            # print(f'\nawaiting record to send: {loops}')
             if loops > 4:
                 print("\nTimeout occurred!\n\n")
                 break
             loops += 1
         client.record = record
-        print("Sent data to next node")
+        # print("Sent data to next node")
 
 
 def setup_all_local_dht(client):
@@ -152,7 +152,7 @@ def connect_query_nodes(client, ip, port):
             client.query = None
             try:
                 s.sendall(query)
-                print('Sent query now listening for response from next node!\n')
+                # Sent query now listening for response from next node!
                 query_response = query_listen(s)
                 return query_response
             except:
@@ -160,7 +160,7 @@ def connect_query_nodes(client, ip, port):
             # else:
             #     time.sleep(1)
         else:
-            print("missing query")
+            print("missing query be sure to put 'query {Long Name}' in your query command")
             return json.dumps({
                     'res': 'FAILURE',
                     'type': 'query-result',
@@ -182,7 +182,7 @@ def query_listen(s):
                         'type': 'query-result',
                         'data': None,
                     })
-        print(f'Query response: {data_loaded}\n')
+        # print(f'Query response: {data_loaded}\n')
         return data_loaded
     else:
         return json.dumps({
@@ -202,7 +202,7 @@ def listen(s, client):
         except:
             print("error with json.load")
             return
-    print(data_loaded)
+    # print(data_loaded)
     
     if data_loaded and data_loaded['res'] == 'SUCCESS':
         print("client: received SUCCESS response from server")
@@ -222,7 +222,7 @@ def listen(s, client):
             client.next_node_query_port = int(data_loaded['data']['query'])
 
             start_new_thread(connect_nodes, (client, ))
-            print("Began node connection thread")
+            print("Began node connection thread\n")
             if (client.id == 0):
                 setup_all_local_dht(client)
                 success_string = bytes(f'dht-complete {client.username}', 'utf-8')
@@ -233,11 +233,11 @@ def listen(s, client):
         elif data_loaded['type'] == 'query-response':
             query_long_name = input("Enter query followed by the Long Name to query: ")
             client.query = ' '.join(query_long_name.split()[1:])
-            print(f"Received query of {client.query}")
+            # print(f"Received query of {client.query}")
             response = connect_query_nodes(client, ip=data_loaded['data'][1], port=int(data_loaded['data'][4]))
             print(response)
-    # else:
-        # die_with_error("client: recvfrom() failed")
+    else:
+        print(data_loaded)
 
 
 def initialize_client_topology(client):
@@ -275,8 +275,8 @@ def client_topology(conn, client):
                     # print(f"client-topology: received message ``{data_loaded}''\n")
                     if data_loaded['type'] == 'record':
                         check_record(client, record=data_loaded['data'])
-                except:
-                    print("error with json.load")
+                except Exception as error:
+                    print(f"The following error occurred: {error}")
             else:
                 break
 
@@ -309,10 +309,10 @@ def client_query_conn(client, conn):
 
             if data:
                 data_list = data.decode('utf-8').split()
-                print(f"query-conn: received message ``{data_list}''\n")
+                # print(f"query-conn: received message ``{data_list}''\n")
                 if data_list[0] == 'query':
                     response = run_query(client, data_list[1:])
-                    print('Query response: ', response)
+                    # print('Query response: ', response)
                     try:
                         if isinstance(response, str):
                             conn.sendall(bytes(response, 'utf-8'))
@@ -370,7 +370,7 @@ def main(args):
 
             
             if echo_string and echo_string != 'listen':
-                print(f"\nClient: reads string ``{echo_string}''\n")
+                # print(f"\nClient: reads string ``{echo_string}''\n")
                 echo_string = bytes(echo_string, 'utf-8')
                 try:
                     s.sendall(echo_string)
@@ -384,7 +384,6 @@ def main(args):
                 print('Listening for server incoming data\n')
                 while True:
                     listen(s, client)
-                    # print(client.local_hash_table)
 
 
 if __name__ == "__main__":
