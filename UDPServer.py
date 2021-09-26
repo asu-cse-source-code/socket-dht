@@ -42,6 +42,16 @@ def die_with_error(error_message):
     sys.exit(error_message)
 
 
+def send_response(conn, res, type, data=None):
+    '''Function to send response from server to client to avoid repetition'''
+    response_data = json.dumps({
+            'res': res,
+            'type': type,
+            'data': data
+        })
+    conn.sendall(bytes(response_data, 'utf-8'))
+
+
 def valid_user(user, users):
     '''Helper function to check if the user given is valid for registry'''
     # Check if username already exists and also if the username is all alphabetical
@@ -117,7 +127,8 @@ def setup_dht(data_list, users, dht):
     dht_leader = User
     dht_others = []
     others = []
-        
+    
+    # Setting up the local DHT, three tuples, and updating users
     for key, value in users.items():
         if key == data_list[2]:
             value.state = 'Leader'
@@ -152,7 +163,7 @@ def setup_topology(dht):
         This function is called after the setup_dht function and will make calls to the clients
         that are maintaining the DHT and give them the needed information
     '''
-    i = 0
+    i = 0 # This is used for the index of the next node logically
     id = 0
     n = len(dht)
     for user in dht:
@@ -160,7 +171,7 @@ def setup_topology(dht):
             i += 1
         else:
             i = 0
-        response_data = json.dumps({
+        topology_data = json.dumps({
             'res': 'SUCCESS',
             'type': 'topology',
             'data': {
@@ -172,8 +183,8 @@ def setup_topology(dht):
                 'query': dht[i].client_query_port
             }
         })
-        print(response_data)
-        user.client.sendall(bytes(response_data, 'utf-8'))
+        print(topology_data)
+        user.client.sendall(bytes(topology_data, 'utf-8'))
         id += 1
 
 
@@ -243,105 +254,59 @@ def threaded_client(conn, port):
         while True:
             data = conn.recv(BUFFER_SIZE)
 
+            # If the received data isn't null
             if data:
                 print(f"server: received string ``{data.decode('utf-8')}'' from client on port {port}\n")
                 data_list = data.decode('utf-8').split()
-                if creating_dht and data_list[0] != 'dht-complete':
-                    response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': 'Creating DHT'
-                        })
-                elif data_list[0] == 'register':
+                command = data_list[0]
+                if creating_dht and command != 'dht-complete':
+                    send_response(conn, res='FAILURE', type='error', data='Creating DHT')
+                elif command == 'register':
                     if register(data_list, users):
                         user = User(data_list[1], data_list[2], data_list[3:])
                         users[user.username] = user
-                        response_data = json.dumps({
-                            'res': 'SUCCESS',
-                            'type': 'register',
-                            'data': None
-                        })
-                        
-                        # for i in range(len(user.ports)):
                         start_new_thread(threaded_socket, (user, ))
                         
+                        send_response(conn, res='SUCCESS', type='register')
                     else:
-                        response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': None
-                        })
-                elif data_list[0] == 'setup-dht':
+                        send_response(conn, res='FAILURE', type='error')
+                elif command == 'setup-dht':
                     # setup-dht ⟨n⟩ ⟨user-name⟩
                     if dht_flag:
-                        response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': None
-                        })
+                        send_response(conn, res='FAILURE', type='error', data='DHT already created')
                     else:
-                        # Make call to setup_dht    
+                        # Make call to setup_dht
                         valid, users, dht, three_tuples = setup_dht(data_list, users, dht)
                         if valid:
-                            response_data = json.dumps({
-                                'res': 'SUCCESS',
-                                'type': 'DHT',
-                                'data': three_tuples
-                            })
                             dht_flag = True
                             creating_dht = True
                             setup_topology(dht)
+                            
+                            send_response(conn, res='SUCCESS', type='DHT', data=three_tuples)
                         else:
-                            response_data = json.dumps({
-                                'res': 'FAILURE',
-                                'data': None
-                            })
-                elif data_list[0] == 'deregister':
+                            send_response(conn, res='FAILURE', type='error')
+                elif command == 'deregister':
                     if deregister(data_list):
-                        response_data = json.dumps({
-                                'res': 'SUCCESS',
-                                'type': 'deregister',
-                                'data': None
-                            })
+                        send_response(conn, res='SUCCESS', type='deregister')
                     else:
-                        response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': None
-                        })
-                elif data_list[0] == 'query-dht':
+                        send_response(conn, res='FAILURE', type='error')
+                elif command == 'query-dht':
                     if valid_query(data_list, users):
                         random_user_index = random.randrange(len(three_tuples))
-                        response_data = json.dumps({
-                                'res': 'SUCCESS',
-                                'type': 'query-response',
-                                'data': three_tuples[random_user_index]
-                            })
+                        send_response(conn, res='SUCCESS', type='query-response', data=three_tuples[random_user_index])
                     else:
-                        response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': None
-                        })
-                elif data_list[0] == 'dht-complete':
+                        send_response(conn, res='FAILURE', type='error')
+                elif command == 'dht-complete':
                     if creating_dht and data_list[1] == dht[0].username:
                         creating_dht = False
-                        response_data = json.dumps({
-                                'res': 'SUCCESS',
-                                'type': 'dht-setup',
-                                'data': None
-                            })
+                        send_response(conn, res='SUCCESS', type='dht-setup')
                     else:
-                        response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': None
-                        })
+                        send_response(conn, res='FAILURE', type='error')
                 else:
-                    response_data = json.dumps({
-                            'res': 'FAILURE',
-                            'data': 'Unknown Command'
-                        })
-
-                # Send the servers response
-                conn.sendall(bytes(response_data, 'utf-8'))
+                    send_response(conn, res='FAILURE', type='error', data='Unkown command')
             else:
                 break
-                
+
 
 def main(args):
     global thread_count
