@@ -1,10 +1,8 @@
 import json
-import os
 import random
 import socket
 import sys
 from _thread import *
-import time
 
 
 ECHOMAX = 255 # Longest string to echo
@@ -17,6 +15,7 @@ thread_count = 0 # Initialize thread count to 0
 
 
 class User:
+    '''The User class will have as many instances as users registered'''
     def __init__(self, username, ip_address, ports):
         self.username = username
         self.ipv4 = ip_address
@@ -34,17 +33,17 @@ class User:
 
 
 def iterate_users(users):
+    '''This function only used for testing purposes to view all users'''
     for key, value in users.items():
         print(f"User {key} has values: {vars(value)}")
 
 def die_with_error(error_message):
+    '''Function to kill the program and ouput the error message'''
     sys.exit(error_message)
 
 
 def valid_user(user, users):
-    '''
-    Helper function to check if the user given is valid for registry
-    '''
+    '''Helper function to check if the user given is valid for registry'''
     # Check if username already exists and also if the username is all alphabetical
     if user in users.keys() or not user.isalpha():
         return False
@@ -53,6 +52,10 @@ def valid_user(user, users):
 
 
 def register(data_list, users):
+    '''
+        This function will take in the command from client and check 
+        if the given information is valid to register a new user
+    '''
     if len(data_list) < 4 or len(data_list) > 6:
         print("\nInvalid number of arguments passed\n")
         return False
@@ -69,6 +72,10 @@ def register(data_list, users):
 
 
 def deregister(data_list):
+    '''
+        This function will check if the user to deregister that was given from
+        the client is valid and then removes the user from users state information
+    '''
     global users
 
     if len(data_list) != 2:
@@ -85,6 +92,10 @@ def deregister(data_list):
     
 
 def setup_dht(data_list, users, dht):
+    '''
+        Setup the local server DHT & three_tuples within the server
+        Also updates the users state information
+    '''
     if len(data_list) < 3:
         print("\nNot enough arguments passed\n")
         return False, users, dht, None
@@ -137,6 +148,10 @@ def setup_dht(data_list, users, dht):
 
 
 def setup_topology(dht):
+    '''
+        This function is called after the setup_dht function and will make calls to the clients
+        that are maintaining the DHT and give them the needed information
+    '''
     i = 0
     id = 0
     n = len(dht)
@@ -163,6 +178,7 @@ def setup_topology(dht):
 
 
 def valid_query(data_list, users):
+    '''Simple check to see if the query command is valid'''
     for key, value in users.items():
         if key == data_list[1]:
             return value.state == 'Free'
@@ -171,6 +187,10 @@ def valid_query(data_list, users):
 
 
 def threaded_socket(user):
+    '''
+        This function is used exclusively with threading and will create socket for communication
+        between the server and the given user from client
+    '''
     global thread_count
     thread_count += 1
     print('Thread Number: ' + str(thread_count))
@@ -206,7 +226,13 @@ def threaded_socket(user):
         
 
 def threaded_client(conn, port):
-    
+    '''
+        This function is used exclusively with threading similar to threaded_socket
+        What this function does is keep the connection alive between the client and 
+        server and monitor for any data sent in
+        
+        This function contains the logic for when the client sends a command
+    '''
     with conn:
         # conn.send(str.encode('Welcome to the Servern'))
         global thread_count
@@ -312,7 +338,6 @@ def threaded_client(conn, port):
                         })
 
                 # Send the servers response
-                # iterate_users(users)
                 conn.sendall(bytes(response_data, 'utf-8'))
             else:
                 break
