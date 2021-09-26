@@ -317,8 +317,8 @@ def client_query_conn(client, conn):
                         if isinstance(response, str):
                             conn.sendall(bytes(response, 'utf-8'))
                         else:
-                            print("response isn't a string")
-                            conn.sendall(response)
+                            response_data = json.dumps(response)
+                            conn.sendall(bytes(response_data, 'utf-8'))
                     except Exception as error:
                         print(error)
                         print('Exception trying to send query response')
