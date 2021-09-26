@@ -24,6 +24,7 @@ class Client:
         self.next_node_query_port = None
         self.record = None
         self.query = None
+        self.began_query = False
         # self.client_conn = None
         self.id = None
         self.username = None
@@ -65,8 +66,9 @@ def run_query(client, long_name):
                     })
     else:
         print("This isn't the correct node for query")
-        client.query = ' '.joing(long_name)
-        return connect_query_nodes(client, None, None)
+        client.query = ' '.join(long_name)
+        result = connect_query_nodes(client, None, None)
+        return result
 
 
 
@@ -129,19 +131,21 @@ def connect_query_nodes(client, ip, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
         if not ip:
-            if not client.next_node_query_ip:
-                for item in client.user_dht:
-                    if item[1] == client.next_node_ip:
-                        client.next_node_query_ip = item[1]
-                        client.next_node_query_port = item[4]
-
             s.connect((client.next_node_query_ip, int(client.next_node_query_port)))
             print("Successfully connected with next node!\n Awaiting query to forward\n\n")
         else:
             s.connect((ip, port))
             print("Successfully connected with given node!\n Awaiting query to forward\n\n")
         
-        
+        if client.began_query and not ip:
+            client.began_query = False
+            print("Query looped through and didn't find record")
+            return json.dumps({
+                    'res': 'FAILURE',
+                    'type': 'query-result',
+                    'data': None,
+                })
+
         if client.query:
             query_info = 'query ' + client.query
             query = bytes(query_info, 'utf-8')
@@ -214,6 +218,8 @@ def listen(s, client):
             client.id = data_loaded['data']['id']
             client.next_node_ip = data_loaded['data']['ip']
             client.next_node_port = int(data_loaded['data']['port'])
+            client.next_node_query_ip = data_loaded['data']['ip']
+            client.next_node_query_port = int(data_loaded['data']['query'])
 
             start_new_thread(connect_nodes, (client, ))
             print("Began node connection thread")

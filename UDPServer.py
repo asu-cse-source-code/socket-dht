@@ -154,6 +154,7 @@ def setup_topology(dht):
                 'username': user.username,
                 'ip': dht[i].ipv4,
                 'port': dht[i].client_port,
+                'query': dht[i].client_query_port
             }
         })
         print(response_data)
