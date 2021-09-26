@@ -99,7 +99,8 @@ def check_record(client, record):
             time.sleep(1)
             # print(f'\nawaiting record to send: {loops}')
             if loops > 4:
-                print("\nTimeout occurred!\n\n")
+                # print("\nTimeout occurred!\n\n")
+                die_with_error("The nodes lost connection with eachother while trying to transfer the records!")
                 break
             loops += 1
         client.record = record
