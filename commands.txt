@@ -4,17 +4,17 @@ Ifconfig to get IP address 'inet' of server
 
 python Server.py 65432
 
-python Client.py 10.120.70.145 65432
+python ClientDriver.py 10.120.70.145 65432
 
 register austin 10.120.70.145 64322 64330
 register gretchen 10.120.70.145 64324 64331
 register randy 10.120.70.145 64326 64332
 register john 10.120.70.145 64328 64333
 
-python Client.py 10.120.70.145 64321 10.120.70.145 64322 64330
-python Client.py 10.120.70.145 64323 10.120.70.145 64324 64331
-python Client.py 10.120.70.145 64325 10.120.70.145 64326 64332
-python Client.py 10.120.70.145 64327 10.120.70.145 64328 64333
+python ClientDriver.py 10.120.70.145 64321 10.120.70.145 64322 64330
+python ClientDriver.py 10.120.70.145 64323 10.120.70.145 64324 64331
+python ClientDriver.py 10.120.70.145 64325 10.120.70.145 64326 64332
+python ClientDriver.py 10.120.70.145 64327 10.120.70.145 64328 64333
 
 setup-dht 2 austin
 query-dht randy
@@ -24,10 +24,10 @@ query-dht randy
 python Server.py 65432
 
 
-python Client.py 127.0.0.1 65432 127.0.0.1 64352 64330 64353
-python Client.py 127.0.0.1 65432 127.0.0.1 64354 64331 64355
-python Client.py 127.0.0.1 65432 127.0.0.1 64356 64332 64357
-python Client.py 127.0.0.1 65432 127.0.0.1 64358 64333 64359
+python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64352 64330 64353
+python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64354 64331 64355
+python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64356 64332 64357
+python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64358 64333 64359
 
 register austin 127.0.0.1 64352 64330
 register gretchen 127.0.0.1 64354 64331

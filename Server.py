@@ -42,7 +42,7 @@ class StateInfo:
             ex: register austin ip port1 port2
         '''
         if len(data_list) != 5:
-            return "Invalid number of arguments passed - expected 5"
+            return None, "Invalid number of arguments passed - expected 5"
 
         if len(data_list[1]) > 15:
             return None, "Username too long"
@@ -163,9 +163,10 @@ class StateInfo:
                 if value.state != 'Free':
                     return "User given doesn't have a state of Free"
                 else:
+                    # Valid user given
                     return None
 
-        return None
+        return "Invalid user given"
 
 
 class UDPServer:
