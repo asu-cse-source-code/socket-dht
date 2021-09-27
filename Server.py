@@ -26,6 +26,7 @@ class StateInfo:
         self.users = {} # Initialize empty dictionary of users
         self.dht_flag = False
         self.creating_dht = False
+        self.ports = [port]
         self.dht = []
         self.three_tuples = ()
     
@@ -49,6 +50,12 @@ class StateInfo:
         if len(data_list[1]) > 15:
             print("Username too long")
             return False
+
+        # Check if the ports are already taken
+        for port in data_list[3:]:
+            if port in self.ports:
+                print(f"\nPort {port} already taken\n")
+                return False
         
         if not self.valid_user(data_list[1]):
             print("\nInvalid user\n")
@@ -56,6 +63,8 @@ class StateInfo:
 
         user = User(data_list[1], data_list[2], data_list[3:])
         self.users[user.username] = user
+        
+        return True
 
     def deregister(self, data_list):
         '''
@@ -96,7 +105,8 @@ class StateInfo:
             return False
 
         # Remove 1 from n for the leader
-        n -= 1
+        dht_size = n
+        n = 1
 
         leader = ()
         dht_leader = User
@@ -108,16 +118,30 @@ class StateInfo:
             if key == data_list[2]:
                 value.state = 'Leader'
                 self.users[key] = dht_leader = value
-                leader = (value.username, value.ipv4, value.port, value.client_port, value.client_query_port)
+                leader = {
+                    'n': dht_size,
+                    'id': 0,
+                    'username': value.username,
+                    'ip': value.ipv4,
+                    'port': value.client_port,
+                    'query': value.client_query_port
+                }
 
-            elif value.state != 'InDHT':
+            elif value.state != 'InDHT' and n != dht_size:
                 value.state = 'InDHT'
                 self.users[key] = value
-                others.append((value.username, value.ipv4, value.port, value.client_port, value.client_query_port))
+                others.append({
+                    'n': dht_size,
+                    'id': n,
+                    'username': value.username,
+                    'ip': value.ipv4,
+                    'port': value.client_port,
+                    'query': value.client_query_port
+                })
                 dht_others.append(value)
-                n -= 1
+                n += 1
             
-            if n == 0:
+            if n == dht_size and len(leader) > 0:
                 break
         
         self.three_tuples = [leader]
@@ -135,31 +159,6 @@ class StateInfo:
 
         return True
 
-    def setup_topology(self, server):
-        '''
-            This function is called after the setup_dht function and will make calls to the clients
-            that are maintaining the DHT and give them the needed information
-        '''
-        i = 0 # This is used for the index of the next node logically
-        id = 0
-        n = len(self.dht)
-        for user in self.dht:
-            if i+1 < n:
-                i += 1
-            else:
-                i = 0
-            topology_data = {
-                    'n': n,
-                    'id': id,
-                    'username': user.username,
-                    'ip': self.dht[i].ipv4,
-                    'port': self.dht[i].client_port,
-                    'query': self.dht[i].client_query_port
-                }
-            
-            print(topology_data)
-            server.send_response(addr=(user.ipv4, user.port), res='SUCCESS', type='topology', data=topology_data)
-            id += 1
 
     def valid_query(self, data_list):
         '''Simple check to see if the query command is valid'''
@@ -171,8 +170,7 @@ class StateInfo:
 
 
 class UDPServer:
-    def __init__(self, port):
-        self.port = port
+    def __init__(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def die_with_error(error_message):
@@ -203,37 +201,35 @@ def parse_data(server, state, data, address):
             if state.register(data_list):
                 server.send_response(addr=address, res='SUCCESS', type='register')
             else:
-                server.send_response(addr=address, res='FAILURE', type='error')
+                server.send_response(addr=address, res='FAILURE', type='register-error')
         elif command == 'setup-dht':
             # setup-dht ⟨n⟩ ⟨user-name⟩
             if state.dht_flag:
-                server.send_response(addr=address, res='FAILURE', type='error', data='DHT already created')
+                server.send_response(addr=address, res='FAILURE', type='setup-dht', data='DHT already created')
             else:
                 # Make call to setup_dht
                 if state.setup_dht(data_list):
-                    
-                    state.setup_topology(server)
-                    
                     server.send_response(addr=address, res='SUCCESS', type='DHT', data=state.three_tuples)
                 else:
-                    server.send_response(addr=address, res='FAILURE', type='error')
+                    server.send_response(addr=address, res='FAILURE', type='DHT-error')
         elif command == 'deregister':
             if state.deregister(data_list):
                 server.send_response(addr=address, res='SUCCESS', type='deregister')
             else:
-                server.send_response(addr=address, res='FAILURE', type='error')
+                server.send_response(addr=address, res='FAILURE', type='deregister-error')
         elif command == 'query-dht':
             if state.valid_query(data_list):
                 random_user_index = random.randrange(len(state.three_tuples))
-                server.send_response(addr=address, res='SUCCESS', type='query-response', data=state.three_tuples[random_user_index])
+                random_user = state.three_tuples[random_user_index]
+                server.send_response(addr=address, res='SUCCESS', type='query-response', data=random_user)
             else:
-                server.send_response(addr=address, res='FAILURE', type='error')
+                server.send_response(addr=address, res='FAILURE', type='query-error')
         elif command == 'dht-complete':
             if state.creating_dht and data_list[1] == state.dht[0].username:
                 state.creating_dht = False
                 server.send_response(addr=address, res='SUCCESS', type='dht-setup')
             else:
-                server.send_response(addr=address, res='FAILURE', type='error')
+                server.send_response(addr=address, res='FAILURE', type='dht-setup-error')
         else:
             server.send_response(addr=address, res='FAILURE', type='error', data='Unkown command')
     
@@ -249,7 +245,7 @@ def main(args):
 
     server_port = int(args[1])  # First arg: Use given port
 
-    server = UDPServer(server_port)
+    server = UDPServer()
     state = StateInfo(server_port)
 
     try:
@@ -257,10 +253,11 @@ def main(args):
     except:
         server.die_with_error("server: bind() failed")
         
+    print(f"server: Port server is listening to is: {server_port}\n")
+    
     # Add loop here so that we can disconnect and reconnect to server
     while True:
 
-        print(f"server: Port server is listening to is: {server_port}\n")
         
         message, addr = server.socket.recvfrom(BUFFER_SIZE)
 
