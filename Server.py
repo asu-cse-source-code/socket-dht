@@ -12,11 +12,8 @@ class User:
         self.username = username
         self.ipv4 = ip_address
         # Convert port to integers
-        self.port = int(ports[0])
-        self.client_port = self.client_query_port = None
-        if len(ports) > 2:
-            self.client_port = ports[1]
-            self.client_query_port = ports[2]
+        self.client_port = int(ports[0])
+        self.client_query_port = int(ports[1])
         self.state = 'Free'
         self.next = None
 
@@ -41,67 +38,64 @@ class StateInfo:
         '''
             This function will take in the command from client and check 
             if the given information is valid to register a new user
+
+            ex: register austin ip port1 port2
         '''
-        if len(data_list) < 4 or len(data_list) > 6:
-            print("\nInvalid number of arguments passed\n")
-            return False
+        if len(data_list) != 5:
+            return "Invalid number of arguments passed - expected 5"
 
         if len(data_list[1]) > 15:
-            print("Username too long")
-            return False
+            return None, "Username too long"
 
         # Check if the ports are already taken
         for port in data_list[3:]:
             if port in self.ports:
-                print(f"\nPort {port} already taken\n")
-                return False
+                return None, f"Port {port} already taken"
         
         if not self.valid_user(data_list[1]):
-            print("\nInvalid user\n")
-            return False
+            return None, "Invalid user"
 
         user = User(data_list[1], data_list[2], data_list[3:])
         self.users[user.username] = user
         
-        return True
+        return "User added successfully", None
 
     def deregister(self, data_list):
         '''
             This function will check if the user to deregister that was given from
             the client is valid and then removes the user from users state information
-        '''
-        global users
 
+            ex: deregister austin
+        '''
         if len(data_list) != 2:
-            return False
+            return None, "Invalid number of arguments - expected 2"
         
         user_to_deregister = self.users[data_list[1]]
         if user_to_deregister.state != 'Free':
-            return False
+            return None, "User given is not in Free state"
         else:
             self.users[user_to_deregister.username].registered = False
             del self.users[user_to_deregister.username]
 
-        return True
+        return "Successfully removed user from state table", None
 
     def setup_dht(self, data_list):
         '''
             Setup the local server DHT & three_tuples within the server
             Also updates the users state information
+
+            ex: setup-dht 2 austin
         '''
-        if len(data_list) < 3:
-            print("\nNot enough arguments passed\n")
-            return False
+        if len(data_list) != 3:
+            return None, "Invalid number of arguments - expected 3"
 
         if self.valid_user(data_list[2]):
-            print("\nLeader not in database\n")
-            return False
+            return None, "Desired leader not in state table"
         
         n = int(data_list[1])
 
         if n < 2 or n > len(self.users):
-            print("\nInvalid n value\n")
-            return False
+            return None, f"Invalid n value -> {n}"
 
         # Remove 1 from n for the leader
         dht_size = n
@@ -156,16 +150,22 @@ class StateInfo:
         self.dht_flag = True
         self.creating_dht = True
 
-        return True
+        return self.three_tuples, None
 
 
     def valid_query(self, data_list):
         '''Simple check to see if the query command is valid'''
+        if len(data_list) != 2:
+            return "Invalid number of arguments - expected 2."
+
         for key, value in self.users.items():
             if key == data_list[1]:
-                return value.state == 'Free'
+                if value.state != 'Free':
+                    return "User given doesn't have a state of Free"
+                else:
+                    return None
 
-        return False
+        return None
 
 
 class UDPServer:
@@ -201,38 +201,45 @@ def parse_data(server, state, data, address):
         if state.creating_dht and command != 'dht-complete':
             server.send_response(addr=address, res='FAILURE', type='error', data='Creating DHT')
         elif command == 'register':
-            if state.register(data_list):
-                server.send_response(addr=address, res='SUCCESS', type='register')
+            res, err = state.register(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='register-error', data=err)
             else:
-                server.send_response(addr=address, res='FAILURE', type='register-error')
+                server.send_response(addr=address, res='SUCCESS', type='register', data=res)
         elif command == 'setup-dht':
             # setup-dht ⟨n⟩ ⟨user-name⟩
             if state.dht_flag:
                 server.send_response(addr=address, res='FAILURE', type='setup-dht', data='DHT already created')
             else:
                 # Make call to setup_dht
-                if state.setup_dht(data_list):
-                    server.send_response(addr=address, res='SUCCESS', type='DHT', data=state.three_tuples)
+                res, err = state.setup_dht(data_list)
+                if err:
+                    server.send_response(addr=address, res='FAILURE', type='DHT-error', data=err)
                 else:
-                    server.send_response(addr=address, res='FAILURE', type='DHT-error')
+                    server.send_response(addr=address, res='SUCCESS', type='DHT', data=res)
         elif command == 'deregister':
-            if state.deregister(data_list):
-                server.send_response(addr=address, res='SUCCESS', type='deregister')
+            res, err = state.deregister(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='deregister-error', data=err)
             else:
-                server.send_response(addr=address, res='FAILURE', type='deregister-error')
+                server.send_response(addr=address, res='SUCCESS', type='deregister', data=res)
         elif command == 'query-dht':
-            if state.valid_query(data_list):
+            err = state.valid_query(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='query-error', data=err)
+            else:
                 random_user_index = random.randrange(len(state.three_tuples))
                 random_user = state.three_tuples[random_user_index]
                 server.send_response(addr=address, res='SUCCESS', type='query-response', data=random_user)
-            else:
-                server.send_response(addr=address, res='FAILURE', type='query-error')
         elif command == 'dht-complete':
-            if state.creating_dht and data_list[1] == state.dht[0].username:
-                state.creating_dht = False
-                server.send_response(addr=address, res='SUCCESS', type='dht-setup')
+            if data_list[1] == state.dht[0].username:
+                if state.creating_dht:
+                    state.creating_dht = False
+                    server.send_response(addr=address, res='SUCCESS', type='dht-setup')
+                else:
+                    server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data="DHT is not currently being created")
             else:
-                server.send_response(addr=address, res='FAILURE', type='dht-setup-error')
+                server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data="Only the DHT leader can send this command")
         else:
             server.send_response(addr=address, res='FAILURE', type='error', data='Unkown command')
     
