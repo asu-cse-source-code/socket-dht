@@ -11,6 +11,12 @@ HASH_SIZE = 353 # Size to initialize the local hash table to
 BUFFER_SIZE = 4096 # Max bytes to take in
 
 
+def end_script(message):
+    if message:
+        print(message)
+    sys.exit()
+
+
 def setup_all_local_dht(client):
     '''This function will read in the records one by one and call to check the record'''
     with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
@@ -64,13 +70,17 @@ def listen(client):
                 first_port = int(data_loaded['data']['query'])
                 client.connect_query_nodes(origin=client.query_addr, ip=first_ip, port=first_port)
                 # print(response)
+            elif data_loaded['type'] == 'deregister':
+                client.terminate = True
+                end_script(f"{data_loaded['data']}\nTerminating client application.")
         else:
             print(data_loaded)
 
 
 def main(args):
     if not (len(args) == 7):
-        sys.exit(f"Usage: {args[0]} <Server IP address> <Server Port> <Client IP address> <Client Accept Port> <Client Query Port> <Client Send Port>\n")
+        print(f"Usage: {args[0]} <Server IP address> <Server Port> <Client IP address> <Client Accept Port> <Client Query Port> <Client Send Port>\n")
+        quit()
     
     serv_IP = args[1]  # First arg: server IP address (dotted decimal)
     echo_serv_port = int(args[2])  # Second arg: Use given port
@@ -101,6 +111,8 @@ def main(args):
     
     while True:
         time.sleep(0.5)
+        if client.terminate:
+            sys.exit()
         echo_string = input("\nEnter command for the server: ")
 
         if echo_string:

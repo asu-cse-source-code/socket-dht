@@ -25,6 +25,7 @@ class Client:
         self.n = None
         self.local_hash_table = [ [] for _ in range(hash_size) ]
         self.user_dht = None
+        self.terminate = False
         # UPDServer sockets
         self.client_to_server = UDPServer()
         self.accept_port = UDPServer()
