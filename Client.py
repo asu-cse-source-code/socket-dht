@@ -50,7 +50,7 @@ def die_with_error(error_message):
 
 def setup_all_local_dht(client):
     '''This function will read in the records one by one and call to check the record'''
-    with open(os.path.join(sys.path[0], "StatsCountrySmall.csv"), "r") as data_file:
+    with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
         csv_reader = DictReader(data_file)
         total_records = 0
         # Iterate over each row in the csv using reader object
@@ -114,6 +114,7 @@ def initialize_client_topology(client):
             return
         
     print(f"client-server: Port server is listening to is: {client.client_addr[1]}\n")
+    start_new_thread(connect_nodes, (client_server, client))
     
     # Add loop here so that we can disconnect and reconnect to server
     while True:
@@ -266,12 +267,12 @@ def connect_all_nodes(s, client):
     i = 1
 
     while i < len(client.user_dht):
-        if i + 1 < len(client.user_dht) - 1:
+        if i + 1 < len(client.user_dht):
             data = (client.user_dht[i], client.user_dht[i+1])
         else:
             data = (client.user_dht[i], client.user_dht[0])
-        print("Sending data: ", data)
-        print("\n\n\n")
+        # print("Sending data: ", data)
+        # print("\n\n\n")
         
         try:
             s.send_response(addr=(client.user_dht[i]['ip'], int(client.user_dht[i]['port'])), res='SUCCESS', type='set-id', data=data)
@@ -293,6 +294,7 @@ def connect_nodes(s, client):
     while True:
         if client.record:
             try:
+                # print(f"sending to next node addr {client.next_node_addr}")
                 s.send_response(addr=client.next_node_addr, res='SUCCESS', type='record', data=client.record)
             except:
                 print("client-node: sendall() error within records connect nodes")
@@ -323,7 +325,6 @@ def listen(s, client):
             if data_loaded['type'] == 'DHT':
                 client.set_data(data_loaded['data'])
                 connect_all_nodes(s, client)
-                start_new_thread(connect_nodes, (s, client))
                 setup_all_local_dht(client)
                 success_string = bytes(f'dht-complete {client.username}', 'utf-8')
                 try:
@@ -368,6 +369,7 @@ def main(args):
     print(f"client: Arguments passed: server IP {client.server_addr}\n")
     # client_to_server = SocketInfo(client.serv_ip, client.serv_port)
     client_to_server = UDPServer()
+    
 
     print("Starting thread to listen to server\n")
     start_new_thread(listen, (client_to_server, client))
