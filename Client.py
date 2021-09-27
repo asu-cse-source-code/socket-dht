@@ -1,4 +1,4 @@
-from Server import UDPServer
+from server import UDPServer
 from csv import DictReader
 import os
 from _thread import *
