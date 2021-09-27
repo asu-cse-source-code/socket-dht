@@ -2,38 +2,37 @@
 
 Ifconfig to get IP address 'inet' of server
 
-python UDPServer.py 65432
+python Server.py 65432
 
-python UDPClient.py 10.120.70.145 65432
+python Client.py 10.120.70.145 65432
 
 register austin 10.120.70.145 64321 64322 64330
 register gretchen 10.120.70.145 64323 64324 64331
 register randy 10.120.70.145 64325 64326 64332
 register john 10.120.70.145 64327 64328 64333
 
-python UDPClient.py 10.120.70.145 64321 10.120.70.145 64322 64330
-python UDPClient.py 10.120.70.145 64323 10.120.70.145 64324 64331
-python UDPClient.py 10.120.70.145 64325 10.120.70.145 64326 64332
-python UDPClient.py 10.120.70.145 64327 10.120.70.145 64328 64333
+python Client.py 10.120.70.145 64321 10.120.70.145 64322 64330
+python Client.py 10.120.70.145 64323 10.120.70.145 64324 64331
+python Client.py 10.120.70.145 64325 10.120.70.145 64326 64332
+python Client.py 10.120.70.145 64327 10.120.70.145 64328 64333
 
 setup-dht 2 austin
 query-dht randy
 
 
 // Locally
-python UDPServer.py 65432
+python Server.py 65432
 
-python UDPClient.py 127.0.0.1 65432
 
-register austin 127.0.0.1 64321 64322 64330
-register gretchen 127.0.0.1 64323 64324 64331
-register randy 127.0.0.1 64325 64326 64332
-register john 127.0.0.1 64327 64328 64333
+python Client.py 127.0.0.1 65432 127.0.0.1 64352 64330
+python Client.py 127.0.0.1 65432 127.0.0.1 64354 64331
+python Client.py 127.0.0.1 65432 127.0.0.1 64356 64332
+python Client.py 127.0.0.1 65432 127.0.0.1 64358 64333
 
-python UDPClient.py 127.0.0.1 64321 127.0.0.1 64322 64330
-python UDPClient.py 127.0.0.1 64323 127.0.0.1 64324 64331
-python UDPClient.py 127.0.0.1 64325 127.0.0.1 64326 64332
-python UDPClient.py 127.0.0.1 64327 127.0.0.1 64328 64333
+register austin 127.0.0.1 64321 64352 64330
+register gretchen 127.0.0.1 64323 64354 64331
+register randy 127.0.0.1 64325 64356 64332
+register john 127.0.0.1 64327 64358 64333
 
 setup-dht 2 austin
 
