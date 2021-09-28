@@ -1,4 +1,4 @@
-from server import UDPServer
+from Server import UDPServer
 from state import StateInfo
 import sys
 
