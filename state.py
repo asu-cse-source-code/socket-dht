@@ -1,3 +1,4 @@
+import json
 import random
 
 
@@ -23,7 +24,6 @@ class StateInfo:
             self.client_port = int(ports[0])
             self.client_query_port = int(ports[1])
             self.state = 'Free'
-            self.next = None
     
     def reset_dht(self):
         # Set every user to state of Free
@@ -154,8 +154,6 @@ class StateInfo:
         self.three_tuples = [leader]
         self.dht = [dht_leader]
         for user in dht_others:
-            # set the next to the following user
-            self.dht[-1].next = user.username
             self.dht.append(user)
 
         for user in others:
@@ -199,6 +197,7 @@ class StateInfo:
                 'username': None,
                 'leader': None,
             }
+        
         for username, value in self.users.items():
             if username == data_list[1]:
                 if value.state != 'Free':
@@ -214,7 +213,7 @@ class StateInfo:
         if join_data['username']:
             return join_data, None
 
-        return "Invalid user given"
+        return None, "Invalid user given"
 
     
     def leave_dht(self, data_list):
@@ -250,19 +249,22 @@ class StateInfo:
             if data_list[1] != self.leaving_user:
                 return None, "Only the user who initiated the leave-dht can respond with complete"
             
-            # Updating the state of new DHT maintainers
-            for user in self.dht:
-                if user.username == data_list[1]:
-                    user.state = 'Free'
-                    self.users[user.username] = user
-                elif user.username == data_list[2]:
-                    if user.state != 'Leader':
-                        user.state = 'Leader'
-                        self.users[user.username] = user
-                else:
-                    if user.state == 'Leader':
-                        user.state = 'InDHT'
-                        self.users[user.username] = user
+            for user, value in self.users.items():
+                if value.state == 'Leader':
+                    value.state = 'InDHT'
+                    self.users[user] = value
+        
+            self.users[self.leaving_user].state = 'Free'
+            self.users[data_list[2]].state = 'Leader'
+
+            # Setting up the local DHT
+            self.dht = []
+            for _, value in self.users.items():
+                if value.state == 'Leader':
+                    self.dht.insert(0, value)
+                elif value.state == 'InDHT':
+                    self.dht.append(value)
+                
 
             self.dht_leader = data_list[2]
             self.stabilizing_dht = False
@@ -278,10 +280,8 @@ class StateInfo:
                 return None, "Only the user who initiated the join-dht can respond with complete"
             
             # Updating the state of new DHT maintainer
-            for user in self.dht:
-                if user.username == data_list[1]:
-                    user.state = 'InDHT'
-                    self.users[user.username] = user
+            self.users[data_list[1]].state = 'InDHT'
+            self.dht.append(self.users[data_list[1]])
 
             self.stabilizing_dht = False
             self.joining_user = None
@@ -322,3 +322,19 @@ class StateInfo:
         
         self.reset_dht()
         return "Successfully destroyed DHT", None
+    
+    def display_users(self):
+        i = 1
+        print("\nDisplaying all users in Server DB: ")
+        for username, value in self.users.items():
+            print(f"\n\t{i}:\t{username}\n\t")
+            print(json.dumps(vars(value), sort_keys=False, indent=4))
+            i += 1
+
+    def display_dht(self):
+        i = 1
+        print("\nDisplaying all dht members in Server DB: ")
+        for user in self.dht:
+            print(f"\n\t{i}:\t{user.username}\n\t")
+            print(json.dumps(vars(user), sort_keys=False, indent=4))
+            i += 1

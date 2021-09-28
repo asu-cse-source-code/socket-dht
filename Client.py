@@ -179,7 +179,8 @@ class Client:
                 else:
                     # We know that the nodes have successfully been renumbered
                     print("Node ID's successfully changed")
-                    
+                    # Call to convert neighbors or the nodes
+                    self.convert_neighbors()
             elif data_loaded['type'] == 'reset-n':
                 if self.id == 0:
                     # This is leader so set previous node and the new n
@@ -227,6 +228,7 @@ class Client:
                 success_string = bytes(f'dht-rebuilt {self.username} {self.new_leader}', 'utf-8')
                 if not self.leaving_user:
                     success_string = bytes(f'dht-rebuilt {self.username}', 'utf-8')
+                self.leaving_user = False
                 try:
                     self.client_to_server.socket.sendto(success_string, self.server_addr)
                 except:
@@ -379,24 +381,22 @@ class Client:
             
             i += 1
 
-    def convert_neighbors(self, leave, prev, curr, new, query):
-        
+    def convert_neighbors(self):
+        reset_right_data = self.prev_node_addr
 
         # Send the reset-right command and await a response
-        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-right', data=prev)
+        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-right', data=reset_right_data)
         res = self.send_port.socket.recv(self.BUFFER_SIZE)
 
         # Check for success message from res
         data_loaded = res.decode('utf-8')
         # print(f'REset right sent back {data_loaded}')
-        if leave:
-            self.new_leader = data_loaded
+        self.new_leader = data_loaded
 
         reset_left_data = {
-            # 'origin': None,
-            'current': curr,
-            'new': new,
-            'query': query
+            'current': self.accept_port_address,
+            'new': self.next_node_addr,
+            'query': self.next_node_query_addr
         }
         
         self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)        

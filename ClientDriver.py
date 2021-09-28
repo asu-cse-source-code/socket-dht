@@ -1,4 +1,4 @@
-from client import Client
+from Client import Client
 from _thread import *
 import json
 import sys

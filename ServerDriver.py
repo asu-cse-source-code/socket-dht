@@ -17,6 +17,8 @@ def parse_data(server, state, data, address):
         command = data_list[0]
         if state.creating_dht and command != 'dht-complete':
             server.send_response(addr=address, res='FAILURE', type='error', data='Creating DHT')
+        elif state.stabilizing_dht and command != 'dht-rebuilt':
+            server.send_response(addr=address, res='FAILURE', type='error', data='Stabilizing DHT')
         elif command == 'register':
             res, err = state.register(data_list)
             if err:
@@ -85,6 +87,10 @@ def parse_data(server, state, data, address):
                 server.send_response(addr=address, res='FAILURE', type='teardown-complete-error', data=err)
             else:
                 server.send_response(addr=address, res='SUCCESS', type='teardown-complete', data=res)
+        elif command == 'display-users':
+            state.display_users()
+        elif command == 'display-dht':
+            state.display_dht()
         else:
             server.send_response(addr=address, res='FAILURE', type='error', data='Unkown command')
     
