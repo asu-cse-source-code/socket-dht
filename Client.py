@@ -448,7 +448,9 @@ class Client:
                 print(json.dumps(data_loaded, sort_keys=False, indent=4))
             
             if data_loaded['type'] == 'DHT':
+                print("Received type DHT")
                 self.set_data(data_loaded['data'], index=-1)
+                print('Finished setting data.. on to connecting nodes')
                 self.connect_all_nodes()
                 # Call setup all dht but set the input printer var to false
                 self.setup_all_local_dht(False)
