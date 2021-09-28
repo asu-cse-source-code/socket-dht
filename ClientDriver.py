@@ -78,8 +78,10 @@ Debugging Commands:
                 # register austin 127.0.0.1 64352 64330
                 string_to_serv = f'{command} {client.username} {client.accept_port_address[0]} {client.accept_port_address[1]} {client.query_addr[1]}'
             elif command == 'setup-dht':
-                string_to_serv = f'{command} {data_list[1]} {client.username}'
-
+                if len(data_list) > 1:
+                    string_to_serv = f'{command} {data_list[1]} {client.username}'
+                else:
+                    string_to_serv = f'{command}'
             # Send command to server
             string_to_serv = bytes(string_to_serv, 'utf-8')
             try:
