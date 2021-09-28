@@ -1,6 +1,4 @@
 from client import Client
-from csv import DictReader
-import os
 from _thread import *
 import json
 import sys
@@ -110,6 +108,8 @@ def main(args):
             sys.exit()
         echo_string = input("\nEnter command for the server: ")
 
+        if echo_string == 'check nodes':
+            client.check_nodes()
         if echo_string:
             # print(f"\nClient: reads string ``{echo_string}''\n")
             echo_string = bytes(echo_string, 'utf-8')

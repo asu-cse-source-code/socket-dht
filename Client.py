@@ -31,6 +31,7 @@ class Client:
         self.terminate = False
         self.leaving_user = False
         self.tearing_down = False
+        self.started_check = False
         # UPDServer sockets
         self.client_to_server = UDPServer()
         self.accept_port = UDPServer()
@@ -39,7 +40,7 @@ class Client:
 
 
     def set_data(self, data, index=0):
-        print('setting client data:', data)
+        # print('setting client data:', data)
         self.user_dht = data
         self.prev_node_addr = (data[index]['ip'], int(data[index]['query']))
         self.id = data[index+1]['id']
@@ -47,6 +48,14 @@ class Client:
         self.n = data[index+1]['n']
         self.next_node_addr = (data[index+2]['ip'], int(data[index+2]['port']))
         self.next_node_query_addr = (data[index+2]['ip'], int(data[index+2]['query']))
+
+    def output_node_info(self):
+        print('\n\nNode info:\n\n')
+        print(f"\tn = {self.n}")
+        print(f"\tid = {self.id}")
+        print(f"\tusername = {self.username}")
+        print(f"\tnext node = {self.next_node_addr}")
+        print(f"\tprev node = {self.prev_node_addr}")
 
     def hash_pos(self, record):
         '''Calculate the pos variable with this hash function'''
@@ -171,10 +180,11 @@ class Client:
                     print("Node ID's successfully changed")
                     self.convert_neighbors()
             elif data_loaded['type'] == 'reset-left':
-                print(data_loaded['data'])
+                # print(data_loaded['data'])
                 if self.next_node_addr == tuple(data_loaded['data']['current']):
-                    print("This is the prev node")
+                    # print("This is the prev node")
                     self.next_node_addr = tuple(data_loaded['data']['new'])
+                    self.next_node_query_addr = tuple(data_loaded['data']['query'])
                     self.send_port.send_response(addr=tuple(data_loaded['data']['current']), res='SUCCESS', type='reset-complete')
                 else:
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=data_loaded['data'])
@@ -196,6 +206,13 @@ class Client:
                 except:
                     print("client: sendall() error sending success string")
                     return
+            elif data_loaded['type'] == 'check-nodes':
+                self.ouput_node_info()
+                if not self.started_check:
+                    self.started_check = False
+                else:
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')
+
 
     def client_query_socket(self):
         '''
@@ -237,7 +254,9 @@ class Client:
                     return
 
             if type(data_loaded['data']) != str:
-                print(data_loaded['data'])
+                record = data_loaded['data']
+                print(f"\n\nQuery for Long Name of {record['Long Name']}:\n")
+                print(json.dumps(data_loaded['data'], sort_keys=False, indent=4))
                 return
             data_list = data_loaded['data'].split()
             # print(f"query-conn: received message ``{data_list}''\n")
@@ -282,7 +301,7 @@ class Client:
             self.began_query = False
             print("Query looped through and didn't find record")
             self.query_port.send_response(origin, res='FAILURE', type='query-result')
-            
+            return
 
         if self.query:
             query_info = 'query ' + self.query
@@ -296,11 +315,11 @@ class Client:
             
             try:
                 if ip:
-                    print(f'sending query info {data_loaded} to address {ip}, {port}')
+                    # print(f'sending query info {data_loaded} to address {ip}, {port}')
                     self.began_query = True
                     self.query_port.socket.sendto(query, (ip, port))
                 else:
-                    print(f'sending query info {data_loaded} to address {self.next_node_query_addr}')
+                    # print(f'sending query info {data_loaded} to address {self.next_node_query_addr}')
                     self.query_port.socket.sendto(query, self.next_node_query_addr)
                 # Sent query now listening for response from next node!
             except:
@@ -341,20 +360,18 @@ class Client:
 
         # Check for success message from res
         data_loaded = res.decode('utf-8')
-        print(f'REset right sent back {data_loaded}')
+        # print(f'REset right sent back {data_loaded}')
         self.new_leader = data_loaded
 
         reset_left_data = {
             # 'origin': None,
             'current': self.accept_port_address,
-            'new': self.next_node_addr
+            'new': self.next_node_addr,
+            'query': self.next_node_query_addr
         }
         
         self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)
-        # res = self.send_port.socket.recv(self.BUFFER_SIZE)
-        
-        # data_loaded = res.decode('utf-8')
-        # print(f'REset right sent back {data_loaded}')
 
-        # if res != b'SUCCESS':
-        #     print(f"Error in the reset-left command received: {res}")
+    def check_nodes(self):
+        self.started_check = True
+        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')
