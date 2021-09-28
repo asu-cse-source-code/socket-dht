@@ -78,9 +78,7 @@ def parse_data(server, state, data, address):
                 server.send_response(addr=address, res='SUCCESS', type='teardown-response', data=res)
         elif command == 'teardown-complete':
             res, err = state.teardown_complete(data_list)
-            if err == 'Node-Level':
-                return server.send_response(addr=address, res='SUCCESS', type='leave-teardown-complete', data=state.leaving_user)
-            elif err:
+            if err:
                 server.send_response(addr=address, res='FAILURE', type='teardown-complete-error', data=err)
             else:
                 server.send_response(addr=address, res='SUCCESS', type='teardown-complete', data=res)

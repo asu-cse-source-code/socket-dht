@@ -33,6 +33,8 @@ register austin 127.0.0.1 64352 64330
 register gretchen 127.0.0.1 64354 64331
 register randy 127.0.0.1 64356 64332
 register john 127.0.0.1 64358 64333
+register brad 127.0.0.1 64360 64334
+register chad 127.0.0.1 64362 64335
 
 setup-dht 2 austin
 

@@ -168,6 +168,9 @@ class StateInfo:
         '''Simple check to see if the query command is valid'''
         if len(data_list) != 2:
             return "Invalid number of arguments - expected 2."
+        
+        if not self.dht:
+            return "There is no DHT created"
 
         for key, value in self.users.items():
             if key == data_list[1]:
@@ -224,6 +227,7 @@ class StateInfo:
                     user.state = 'InDHT'
                     self.users[user.username] = user
 
+        self.dht_leader = data_list[2]
         self.stabilizing_dht = False
         self.leaving_user = None
 

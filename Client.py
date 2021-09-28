@@ -30,7 +30,6 @@ class Client:
         self.new_leader = None
         self.terminate = False
         self.leaving_user = False
-        self.tearing_down = False
         self.started_check = False
         # UPDServer sockets
         self.client_to_server = UDPServer()
@@ -42,7 +41,7 @@ class Client:
     def set_data(self, data, index=0):
         # print('setting client data:', data)
         self.user_dht = data
-        self.prev_node_addr = (data[index]['ip'], int(data[index]['query']))
+        self.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
         self.id = data[index+1]['id']
         self.username = data[index+1]['username']
         self.n = data[index+1]['n']
@@ -56,6 +55,7 @@ class Client:
         print(f"\tusername = {self.username}")
         print(f"\tnext node = {self.next_node_addr}")
         print(f"\tprev node = {self.prev_node_addr}")
+        print(f"\tnext query = {self.next_node_query_addr}")
 
     def hash_pos(self, record):
         '''Calculate the pos variable with this hash function'''
@@ -157,17 +157,14 @@ class Client:
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'teardown':
                 if self.id == 0:
-                    if self.tearing_down:
-                        self.teardown_dht(False)
-                        self.tearing_down = False
-                        # Send successful command to server
-                        self.client_to_server.socket.sendto(bytes(f'teardown-complete {self.username}', 'utf-8'), self.server_addr)
-                    else:
-                        self.tearing_down = True
-                        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='teardown')
-                else:
                     self.teardown_dht(False)
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='teardown')
+                    # Send successful command to server
+                    self.client_to_server.socket.sendto(bytes(f'teardown-complete {self.username}', 'utf-8'), self.server_addr) 
+                else:
+                    next_node_addr = self.next_node_addr
+                    self.teardown_dht(False)
+                    print(next_node_addr)
+                    self.send_port.send_response(addr=next_node_addr, res='SUCCESS', type='teardown')
             elif data_loaded['type'] == 'reset-id':
                 new_id = int(data_loaded['data'])
                 if not self.leaving_user:
@@ -207,7 +204,7 @@ class Client:
                     print("client: sendall() error sending success string")
                     return
             elif data_loaded['type'] == 'check-nodes':
-                self.ouput_node_info()
+                self.output_node_info()
                 if not self.started_check:
                     self.started_check = False
                 else:
@@ -277,6 +274,7 @@ class Client:
         id = pos % self.n
         if id == self.id:
             # This is the correct node for query
+            print('correct node for the query')
             records = self.local_hash_table[pos]
             for record in records:
                 if record['Long Name'] == ' '.join(long_name):
@@ -288,6 +286,7 @@ class Client:
             self.query_port.send_response(addr, res='FAILURE', type='query-result')
         else:
             # This isn't the correct node for query
+            print('incorrect node for query')
             self.query = ' '.join(long_name)
             self.connect_query_nodes(addr)
 
@@ -370,8 +369,8 @@ class Client:
             'query': self.next_node_query_addr
         }
         
-        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)
-
+        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)        
+    
     def check_nodes(self):
         self.started_check = True
         self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')

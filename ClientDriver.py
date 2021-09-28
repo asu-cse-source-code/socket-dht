@@ -30,12 +30,11 @@ def listen(client):
             except:
                 print("error with json.load")
                 return
-        # print(data_loaded)
         
+        print("\n\n")
         if data_loaded and data_loaded['res'] == 'SUCCESS':
-            print("client: received SUCCESS response from server")
             if data_loaded['data']:
-                print(f"\nclient: received data {data_loaded['data']} from server on IP address {client.server_addr[0]}\n")
+                print(json.dumps(data_loaded, sort_keys=False, indent=4))
             
             if data_loaded['type'] == 'DHT':
                 client.set_data(data_loaded['data'], index=-1)
@@ -61,13 +60,14 @@ def listen(client):
             elif data_loaded['type'] == 'leave-response':
                 client.leaving_user = True
                 client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='leaving-teardown')
-            elif data_loaded['type'] == 'leave-teardown-complete':
-                # Now we need to iterate through the nodes until we get to the user leaving
-                if data_loaded['data'] == client.username:
-                    # Leader is the user supposed to leave
-                    client.leave_dht()
+            elif data_loaded['type'] == 'teardown-response':
+                # Need to be on the leader node for this to work
+                if client.id == 0:
+                    client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='teardown')
+                else:
+                    print("\n\nCan't run this command since this is not the leader node\n")
         else:
-            print(data_loaded)
+            print(json.dumps(data_loaded, sort_keys=False, indent=4))
 
 
 def main(args):
@@ -109,8 +109,8 @@ def main(args):
         echo_string = input("\nEnter command for the server: ")
 
         if echo_string == 'check nodes':
-            client.check_nodes()
-        if echo_string:
+            client.output_node_info()
+        elif echo_string:
             # print(f"\nClient: reads string ``{echo_string}''\n")
             echo_string = bytes(echo_string, 'utf-8')
             try:
