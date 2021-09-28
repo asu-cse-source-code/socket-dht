@@ -178,7 +178,28 @@ class Client:
                 else:
                     # We know that the nodes have successfully been renumbered
                     print("Node ID's successfully changed")
-                    self.convert_neighbors()
+                    
+            elif data_loaded['type'] == 'reset-n':
+                if self.id == 0:
+                    # This is leader so set previous node and the new n
+                    self.n = self.n + 1
+                    data_loaded['data']['n'] = self.n
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=data_loaded['data'])
+                elif self.username != data_loaded['data']['username']:
+                    self.n = self.n + 1
+                    if self.n - 2 == self.id:
+                        data_loaded['data']['prev'] = self.accept_port_address
+                        self.next_node_addr = tuple(data_loaded['data']['addr'])
+                        self.next_node_query_addr = tuple(data_loaded['data']['query'])
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=data_loaded['data'])
+                else:
+                    # We know that the nodes have successfully been renumbered
+                    print("Node size successfully changed")
+                    self.prev_node_addr = data_loaded['data']['prev']
+                    self.n = data_loaded['data']['n']
+                    self.id = self.n - 1
+                    # We know that the next node is the leader so call for rebuild of DHT
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=self.accept_port_address)
             elif data_loaded['type'] == 'reset-left':
                 # print(data_loaded['data'])
                 if self.next_node_addr == tuple(data_loaded['data']['current']):
@@ -197,6 +218,7 @@ class Client:
                 self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=res_data)
             elif data_loaded['type'] == 'rebuild-dht':
                 print("Received rebuild DHT command\nSetting up node ring")
+                self.new_leader = self.username # Set new leader when we initialize the rebuild of DHT
                 self.setup_all_local_dht()
                 self.send_port.send_response(addr=tuple(data_loaded['data']), res='SUCCESS', type='dht-rebuilt')
             elif data_loaded['type'] == 'dht-rebuilt':
@@ -353,27 +375,28 @@ class Client:
             
             i += 1
 
-    def convert_neighbors(self):
-        reset_right_data = self.prev_node_addr
+    def convert_neighbors(self, leave, prev, curr, new, query):
+        
 
         # Send the reset-right command and await a response
-        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-right', data=reset_right_data)
+        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-right', data=prev)
         res = self.send_port.socket.recv(self.BUFFER_SIZE)
 
         # Check for success message from res
         data_loaded = res.decode('utf-8')
         # print(f'REset right sent back {data_loaded}')
-        self.new_leader = data_loaded
+        if leave:
+            self.new_leader = data_loaded
 
         reset_left_data = {
             # 'origin': None,
-            'current': self.accept_port_address,
-            'new': self.next_node_addr,
-            'query': self.next_node_query_addr
+            'current': curr,
+            'new': new,
+            'query': query
         }
         
         self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)        
-    
+        
     def check_nodes(self):
         self.started_check = True
         self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')

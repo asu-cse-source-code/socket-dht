@@ -1,4 +1,3 @@
-import random
 from server import UDPServer
 from state import StateInfo
 import sys
@@ -42,13 +41,11 @@ def parse_data(server, state, data, address):
             else:
                 server.send_response(addr=address, res='SUCCESS', type='deregister', data=res)
         elif command == 'query-dht':
-            err = state.valid_query(data_list)
+            res, err = state.valid_query(data_list)
             if err:
                 server.send_response(addr=address, res='FAILURE', type='query-error', data=err)
             else:
-                random_user_index = random.randrange(len(state.three_tuples))
-                random_user = state.three_tuples[random_user_index]
-                server.send_response(addr=address, res='SUCCESS', type='query-response', data=random_user)
+                server.send_response(addr=address, res='SUCCESS', type='query-response', data=res)
         elif command == 'dht-complete':
             if data_list[1] == state.dht_leader:
                 if state.creating_dht:

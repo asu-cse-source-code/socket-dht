@@ -54,6 +54,20 @@ def listen(client):
                 first_port = int(data_loaded['data']['query'])
                 client.connect_query_nodes(origin=client.query_addr, ip=first_ip, port=first_port)
                 # print(response)
+            elif data_loaded['type'] == 'join-response':
+                client.username = data_loaded['data']['username']
+                client.next_node_addr = tuple(data_loaded['data']['leader'][0])
+                client.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
+
+                new_data = {
+                    'username': client.username,
+                    'n': 0,
+                    'addr': client.accept_port_address,
+                    'query': client.query_addr
+                }
+
+                client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
+                # print(response)
             elif data_loaded['type'] == 'deregister':
                 client.terminate = True
                 end_script(f"{data_loaded['data']}\nTerminating client application.")

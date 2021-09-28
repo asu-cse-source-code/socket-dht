@@ -1,3 +1,6 @@
+from random import random
+
+
 class StateInfo:
     def __init__(self, port):
         self.users = {} # Initialize empty dictionary of users
@@ -167,20 +170,22 @@ class StateInfo:
     def valid_query(self, data_list):
         '''Simple check to see if the query command is valid'''
         if len(data_list) != 2:
-            return "Invalid number of arguments - expected 2."
+            return None, "Invalid number of arguments - expected 2."
         
         if not self.dht:
-            return "There is no DHT created"
+            return None, "There is no DHT created"
 
         for key, value in self.users.items():
             if key == data_list[1]:
                 if value.state != 'Free':
-                    return "User given doesn't have a state of Free"
+                    return None, "User given doesn't have a state of Free"
                 else:
                     # Valid user given
-                    return None
+                    random_user_index = random.randrange(len(self.three_tuples))
+                    random_user = self.three_tuples[random_user_index]
+                    return random_user, None
 
-        return "Invalid user given"
+        return None, "Invalid user given"
 
     def join_dht(self, data_list):
         '''Simple check to see if the leave-dht command is valid'''
@@ -190,6 +195,10 @@ class StateInfo:
         if not self.dht:
             return None, "There is no DHT created"
 
+        join_data = {
+                'username': None,
+                'leader': None,
+            }
         for username, value in self.users.items():
             if username == data_list[1]:
                 if value.state != 'Free':
@@ -198,7 +207,12 @@ class StateInfo:
                     # Valid user given
                     self.joining_user = username
                     self.stabilizing_dht = True
-                    return f"Adding {username} to the DHT", None
+                    join_data['username'] = value.username
+            elif value.state == 'Leader':
+                join_data['leader'] = [(value.ipv4, value.client_port), (value.ipv4, value.client_query_port)]
+        
+        if join_data['username']:
+            return join_data, None
 
         return "Invalid user given"
 
