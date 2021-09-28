@@ -50,14 +50,40 @@ def parse_data(server, state, data, address):
                 random_user = state.three_tuples[random_user_index]
                 server.send_response(addr=address, res='SUCCESS', type='query-response', data=random_user)
         elif command == 'dht-complete':
-            if data_list[1] == state.dht[0].username:
+            if data_list[1] == state.dht_leader:
                 if state.creating_dht:
                     state.creating_dht = False
                     server.send_response(addr=address, res='SUCCESS', type='dht-setup')
                 else:
                     server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data="DHT is not currently being created")
             else:
-                server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data="Only the DHT leader can send this command")
+                server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data=f"{state.dht_leader} is the DHT leader, not {data_list[1]}")
+        elif command == 'leave-dht':
+            res, err = state.leave_dht(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='leave-error', data=err)
+            else:
+                server.send_response(addr=address, res='SUCCESS', type='leave-response', data=res)
+        elif command == 'dht-rebuilt':
+            res, err = state.dht_rebuilt(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='rebuilt-error', data=err)
+            else:
+                server.send_response(addr=address, res='SUCCESS', type='rebuilt-response', data=res)
+        elif command == 'teardown-dht':
+            res, err = state.teardown_dht(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='teardown-error', data=err)
+            else:
+                server.send_response(addr=address, res='SUCCESS', type='teardown-response', data=res)
+        elif command == 'teardown-complete':
+            res, err = state.teardown_complete(data_list)
+            if err == 'Node-Level':
+                return server.send_response(addr=address, res='SUCCESS', type='leave-teardown-complete', data=state.leaving_user)
+            elif err:
+                server.send_response(addr=address, res='FAILURE', type='teardown-complete-error', data=err)
+            else:
+                server.send_response(addr=address, res='SUCCESS', type='teardown-complete', data=res)
         else:
             server.send_response(addr=address, res='FAILURE', type='error', data='Unkown command')
     

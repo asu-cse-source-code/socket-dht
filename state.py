@@ -3,9 +3,13 @@ class StateInfo:
         self.users = {} # Initialize empty dictionary of users
         self.dht_flag = False
         self.creating_dht = False
+        self.stabilizing_dht = False
+        self.tearing_down_dht = False
         self.ports = [port]
         self.dht = []
+        self.dht_leader = None
         self.three_tuples = ()
+        self.leaving_user = None
 
     class User:
         '''The User class will have as many instances as users registered'''
@@ -17,6 +21,20 @@ class StateInfo:
             self.client_query_port = int(ports[1])
             self.state = 'Free'
             self.next = None
+    
+    def reset_dht(self):
+        # Set every user to state of Free
+        for user in self.dht:
+            user.state = 'Free'
+            self.users[user.username] = user
+        
+        self.dht_flag = False
+        self.tearing_down_dht = False
+        self.dht = []
+        self.dht_leader = None
+        self.three_tuples = ()
+
+
     
     def valid_user(self, user):
         '''Helper function to check if the user given is valid for registry'''
@@ -94,6 +112,7 @@ class StateInfo:
         n = 1
 
         leader = ()
+        self.dht_leader = data_list[2]
         dht_leader = self.User
         dht_others = []
         others = []
@@ -159,3 +178,85 @@ class StateInfo:
                     return None
 
         return "Invalid user given"
+    
+    def leave_dht(self, data_list):
+        '''Simple check to see if the leave-dht command is valid'''
+        if len(data_list) != 2:
+            return None, "Invalid number of arguments - expected 2."
+
+        if not self.dht:
+            return None, "There is no DHT created"
+
+        if (len(self.dht)) < 2:
+            return None, "Current DHT doesn't have enough maintainers for anyone to leave"
+
+        for username, value in self.users.items():
+            if username == data_list[1]:
+                if value.state == 'Free':
+                    return None, f"{data_list[1]} is not currently maintaining the DHT"
+                else:
+                    # Valid user given
+                    self.leaving_user = username
+                    self.stabilizing_dht = True
+                    return f"Removing {username} from DHT", None
+
+        return "Invalid user given"
+
+    def dht_rebuilt(self, data_list):
+        '''Check to see if the rebuilt dht command is valid'''
+        if len(data_list) != 3:
+            return None, "Invalid number of arguments - expected 3."
+
+        if data_list[1] != self.leaving_user:
+            return None, "Only the user who initiated the leave-dht can respond with complete"
+        
+        # Updating the state of new DHT maintainers
+        for user in self.dht:
+            if user.username == data_list[1]:
+                user.state = 'Free'
+                self.users[user.username] = user
+            elif user.username == data_list[2]:
+                if user.state != 'Leader':
+                    user.state = 'Leader'
+                    self.users[user.username] = user
+            else:
+                if user.state == 'Leader':
+                    user.state = 'InDHT'
+                    self.users[user.username] = user
+
+        self.stabilizing_dht = False
+        self.leaving_user = None
+
+        return "DHT has been successfully rebuilt", None
+    
+    def teardown_dht(self, data_list):
+        '''Simple check to see if the teardown-dht command is valid'''
+        if len(data_list) != 2:
+            return None, "Invalid number of arguments - expected 2."
+
+        if not self.dht:
+            return None, "There is no DHT created"
+
+        for username, value in self.users.items():
+            if username == data_list[1]:
+                if value.state != 'Leader':
+                    return None, f"{data_list[1]} is not the leader of the DHT"
+                else:
+                    # Valid user given
+                    self.tearing_down_dht = True
+                    return f"Initiating teardown of the DHT", None
+
+        return "Invalid user given"
+
+    def teardown_complete(self, data_list):
+        if len(data_list) != 2:
+            return None, "Invalid number of arguments - expected 2."
+        
+        if data_list[1] != self.dht_leader:
+            return None, "Only the DHT leader can send this command"
+        
+        if not self.tearing_down_dht and not self.stabilizing_dht:
+            return None, "The DHT is not being torn down"
+        
+        self.reset_dht()
+        return "Successfully destroyed DHT", None

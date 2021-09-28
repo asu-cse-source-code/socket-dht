@@ -9,26 +9,13 @@ import time
 
 HASH_SIZE = 353 # Size to initialize the local hash table to
 BUFFER_SIZE = 4096 # Max bytes to take in
+FILE_PATH = "StatsCountry.csv"
 
 
 def end_script(message):
     if message:
         print(message)
     sys.exit()
-
-
-def setup_all_local_dht(client):
-    '''This function will read in the records one by one and call to check the record'''
-    with open(os.path.join(sys.path[0], "StatsCountry.csv"), "r") as data_file:
-        csv_reader = DictReader(data_file)
-        total_records = 0
-        # Iterate over each row in the csv using reader object
-        for record in csv_reader:
-            client.check_record(record)
-            total_records += 1
-            if total_records % 20 == 0:
-                print(f"{total_records} read so far...")
-        print(f"{total_records} read in total")
 
 
 def listen(client):
@@ -53,9 +40,9 @@ def listen(client):
                 print(f"\nclient: received data {data_loaded['data']} from server on IP address {client.server_addr[0]}\n")
             
             if data_loaded['type'] == 'DHT':
-                client.set_data(data_loaded['data'])
+                client.set_data(data_loaded['data'], index=-1)
                 client.connect_all_nodes()
-                setup_all_local_dht(client)
+                client.setup_all_local_dht()
                 success_string = bytes(f'dht-complete {client.username}', 'utf-8')
                 try:
                     client.client_to_server.socket.sendto(success_string, client.server_addr)
@@ -73,6 +60,14 @@ def listen(client):
             elif data_loaded['type'] == 'deregister':
                 client.terminate = True
                 end_script(f"{data_loaded['data']}\nTerminating client application.")
+            elif data_loaded['type'] == 'leave-response':
+                client.leaving_user = True
+                client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='leaving-teardown')
+            elif data_loaded['type'] == 'leave-teardown-complete':
+                # Now we need to iterate through the nodes until we get to the user leaving
+                if data_loaded['data'] == client.username:
+                    # Leader is the user supposed to leave
+                    client.leave_dht()
         else:
             print(data_loaded)
 
@@ -91,11 +86,11 @@ def main(args):
     right_ip = client_IP
     right_port = int(args[6])
 
-    client = Client(serv_IP, echo_serv_port, client_IP, client_port, query_ip, query_port, right_ip, right_port, HASH_SIZE, BUFFER_SIZE)
+    client = Client(serv_IP, echo_serv_port, client_IP, client_port, query_ip, query_port, right_ip, right_port, HASH_SIZE, BUFFER_SIZE, FILE_PATH)
 
     # Start the client server
     print('Starting client topology socket\n')
-    start_new_thread(client.initialize_client_topology, ())
+    start_new_thread(client.initialize_acceptance_port, ())
 
     # Start the client query server
     print("Starting client query socket\n")

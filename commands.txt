@@ -37,3 +37,5 @@ register john 127.0.0.1 64358 64333
 setup-dht 2 austin
 
 query-dht randy
+
+leave-dht gretchen
