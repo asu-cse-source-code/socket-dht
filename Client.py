@@ -30,6 +30,7 @@ class Client:
         self.new_leader = None
         self.terminate = False
         self.leaving_user = False
+        self.joinin_user = False
         self.started_check = False
         # UPDServer sockets
         '''
@@ -184,14 +185,15 @@ class Client:
                     # This is leader so set previous node and the new n
                     self.n = self.n + 1
                     data_loaded['data']['n'] = self.n
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=data_loaded['data'])
+                    self.prev_node_addr = data_loaded['data']['addr']
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
                 elif self.username != data_loaded['data']['username']:
                     self.n = self.n + 1
                     if self.n - 2 == self.id:
                         data_loaded['data']['prev'] = self.accept_port_address
                         self.next_node_addr = tuple(data_loaded['data']['addr'])
                         self.next_node_query_addr = tuple(data_loaded['data']['query'])
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=data_loaded['data'])
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
                 else:
                     # We know that the nodes have successfully been renumbered
                     print("Node size successfully changed")
@@ -218,11 +220,13 @@ class Client:
                 self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=res_data)
             elif data_loaded['type'] == 'rebuild-dht':
                 print("Received rebuild DHT command\nSetting up node ring")
-                self.new_leader = self.username # Set new leader when we initialize the rebuild of DHT
+                # self.new_leader = self.username # Set new leader when we initialize the rebuild of DHT
                 self.setup_all_local_dht()
                 self.send_port.send_response(addr=tuple(data_loaded['data']), res='SUCCESS', type='dht-rebuilt')
             elif data_loaded['type'] == 'dht-rebuilt':
                 success_string = bytes(f'dht-rebuilt {self.username} {self.new_leader}', 'utf-8')
+                if not self.leaving_user:
+                    success_string = bytes(f'dht-rebuilt {self.username}', 'utf-8')
                 try:
                     self.client_to_server.socket.sendto(success_string, self.server_addr)
                 except:
