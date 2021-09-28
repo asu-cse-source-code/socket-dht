@@ -10,80 +10,6 @@ BUFFER_SIZE = 4096 # Max bytes to take in
 FILE_PATH = "StatsCountry.csv"
 
 
-def end_script(message):
-    if message:
-        print(message)
-    sys.exit()
-
-
-def listen(client):
-    '''
-        Listen function that will listen to all responses from the server connected to client
-    '''
-    while True:
-        data = client.client_to_server.socket.recv(BUFFER_SIZE)
-        data_loaded = data.decode('utf-8')
-
-        if data_loaded:
-            try:
-                data_loaded = json.loads(data_loaded)
-            except:
-                print("error with json.load")
-                return
-        
-        print("\n\n")
-        if data_loaded and data_loaded['res'] == 'SUCCESS':
-            if data_loaded['data']:
-                print(json.dumps(data_loaded, sort_keys=False, indent=4))
-            
-            if data_loaded['type'] == 'DHT':
-                client.set_data(data_loaded['data'], index=-1)
-                client.connect_all_nodes()
-                client.setup_all_local_dht()
-                success_string = bytes(f'dht-complete {client.username}', 'utf-8')
-                try:
-                    client.client_to_server.socket.sendto(success_string, client.server_addr)
-                except:
-                    print("client: sendall() error sending success string")
-                    return
-            elif data_loaded['type'] == 'query-response':
-                query_long_name = input("Enter query followed by the Long Name to query: ")
-                client.query = ' '.join(query_long_name.split()[1:])
-                # print(f"Received query of {client.query}")
-                first_ip = data_loaded['data']['ip']
-                first_port = int(data_loaded['data']['query'])
-                client.connect_query_nodes(origin=client.query_addr, ip=first_ip, port=first_port)
-                # print(response)
-            elif data_loaded['type'] == 'join-response':
-                client.username = data_loaded['data']['username']
-                client.next_node_addr = tuple(data_loaded['data']['leader'][0])
-                client.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
-
-                new_data = {
-                    'username': client.username,
-                    'n': 0,
-                    'addr': client.accept_port_address,
-                    'query': client.query_addr
-                }
-
-                client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
-                # print(response)
-            elif data_loaded['type'] == 'deregister':
-                client.terminate = True
-                end_script(f"{data_loaded['data']}\nTerminating client application.")
-            elif data_loaded['type'] == 'leave-response':
-                client.leaving_user = True
-                client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='leaving-teardown')
-            elif data_loaded['type'] == 'teardown-response':
-                # Need to be on the leader node for this to work
-                if client.id == 0:
-                    client.send_port.send_response(addr=client.next_node_addr, res='SUCCESS', type='teardown')
-                else:
-                    print("\n\nCan't run this command since this is not the leader node\n")
-        else:
-            print(json.dumps(data_loaded, sort_keys=False, indent=4))
-
-
 def main(args):
     if not (len(args) == 7):
         print(f"Usage: {args[0]} <Server IP address> <Server Port> <Client IP address> <Client Accept Port> <Client Query Port> <Client Send Port>\n")
@@ -113,23 +39,23 @@ def main(args):
     print(f"client: Arguments passed: server IP {client.server_addr}\n")
     
 
-    print("Starting thread to listen to server\n")
-    start_new_thread(listen, (client, ))
+    # print("Starting thread to listen to server\n")
+    # start_new_thread(listen, (client, ))
     
     while True:
-        time.sleep(0.5)
-        if client.terminate:
-            sys.exit()
-        echo_string = input("\nEnter command for the server: ")
+        time.sleep(0.2)
+        user_input = input("\nEnter command for the server: ")
+        data_list = user_input.split()
+        command = data_list[0]
 
-        if echo_string == 'check nodes':
+        if command == 'check-node':
             client.output_node_info()
-        elif echo_string:
+        elif user_input:
             # print(f"\nClient: reads string ``{echo_string}''\n")
-            echo_string = bytes(echo_string, 'utf-8')
+            user_input = bytes(user_input, 'utf-8')
             try:
-                client.client_to_server.socket.sendto(echo_string, client.server_addr)
-                
+                client.client_to_server.socket.sendto(user_input, client.server_addr)
+                client.listen()
             except Exception as error:
                 print(error)
                 print("client: sendall() error")

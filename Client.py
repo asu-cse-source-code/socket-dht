@@ -28,7 +28,6 @@ class Client:
         self.local_hash_table = [ [] for _ in range(hash_size) ]
         self.user_dht = None
         self.new_leader = None
-        self.terminate = False
         self.leaving_user = False
         self.joinin_user = False
         self.started_check = False
@@ -68,6 +67,11 @@ class Client:
             ascii_sum += ord(letter)
         
         return ascii_sum % self.HASH_SIZE
+    
+    def end_script(message):
+        if message:
+            print(message)
+        sys.exit()
 
     def check_record(self, record):
         '''
@@ -164,6 +168,7 @@ class Client:
                     self.teardown_dht(False)
                     # Send successful command to server
                     self.client_to_server.socket.sendto(bytes(f'teardown-complete {self.username}', 'utf-8'), self.server_addr) 
+                    self.listen()
                 else:
                     next_node_addr = self.next_node_addr
                     self.teardown_dht(False)
@@ -231,6 +236,7 @@ class Client:
                 self.leaving_user = False
                 try:
                     self.client_to_server.socket.sendto(success_string, self.server_addr)
+                    self.listen()
                 except:
                     print("client: sendall() error sending success string")
                     return
@@ -404,3 +410,70 @@ class Client:
     def check_nodes(self):
         self.started_check = True
         self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')
+
+    def listen(self):
+        '''
+            Listen function that will listen to all responses from the server connected to self
+        '''
+        
+        data = self.client_to_server.socket.recv(self.BUFFER_SIZE)
+        data_loaded = data.decode('utf-8')
+
+        if data_loaded:
+            try:
+                data_loaded = json.loads(data_loaded)
+            except:
+                print("error with json.load")
+                return
+        
+        print("\n\n")
+        if data_loaded and data_loaded['res'] == 'SUCCESS':
+            if data_loaded['data']:
+                print(json.dumps(data_loaded, sort_keys=False, indent=4))
+            
+            if data_loaded['type'] == 'DHT':
+                self.set_data(data_loaded['data'], index=-1)
+                self.connect_all_nodes()
+                self.setup_all_local_dht()
+                success_string = bytes(f'dht-complete {self.username}', 'utf-8')
+                try:
+                    self.client_to_server.socket.sendto(success_string, self.server_addr)
+                    self.listen()
+                except:
+                    print("client: sendall() error sending success string")
+                    return
+            elif data_loaded['type'] == 'query-response':
+                query_long_name = input("Enter query followed by the Long Name to query: ")
+                self.query = ' '.join(query_long_name.split()[1:])
+                # print(f"Received query of {self.query}")
+                first_ip = data_loaded['data']['ip']
+                first_port = int(data_loaded['data']['query'])
+                self.connect_query_nodes(origin=self.query_addr, ip=first_ip, port=first_port)
+                # print(response)
+            elif data_loaded['type'] == 'join-response':
+                self.username = data_loaded['data']['username']
+                self.next_node_addr = tuple(data_loaded['data']['leader'][0])
+                self.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
+
+                new_data = {
+                    'username': self.username,
+                    'n': 0,
+                    'addr': self.accept_port_address,
+                    'query': self.query_addr
+                }
+
+                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
+                # print(response)
+            elif data_loaded['type'] == 'deregister':
+                self.end_script(f"{data_loaded['data']}\nTerminating client application.")
+            elif data_loaded['type'] == 'leave-response':
+                self.leaving_user = True
+                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
+            elif data_loaded['type'] == 'teardown-response':
+                # Need to be on the leader node for this to work
+                if self.id == 0:
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='teardown')
+                else:
+                    print("\n\nCan't run this command since this is not the leader node\n")
+        else:
+            print(json.dumps(data_loaded, sort_keys=False, indent=4))

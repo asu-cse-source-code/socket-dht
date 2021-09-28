@@ -89,8 +89,10 @@ def parse_data(server, state, data, address):
                 server.send_response(addr=address, res='SUCCESS', type='teardown-complete', data=res)
         elif command == 'display-users':
             state.display_users()
+            server.send_response(addr=address, res='SUCCESS', type='debugging')
         elif command == 'display-dht':
             state.display_dht()
+            server.send_response(addr=address, res='SUCCESS', type='debugging')
         else:
             server.send_response(addr=address, res='FAILURE', type='error', data='Unkown command')
     
