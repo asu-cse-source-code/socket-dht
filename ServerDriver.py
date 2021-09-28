@@ -58,6 +58,12 @@ def parse_data(server, state, data, address):
                     server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data="DHT is not currently being created")
             else:
                 server.send_response(addr=address, res='FAILURE', type='dht-setup-error', data=f"{state.dht_leader} is the DHT leader, not {data_list[1]}")
+        elif command == 'join-dht':
+            res, err = state.join_dht(data_list)
+            if err:
+                server.send_response(addr=address, res='FAILURE', type='join-error', data=err)
+            else:
+                server.send_response(addr=address, res='SUCCESS', type='join-response', data=res)
         elif command == 'leave-dht':
             res, err = state.leave_dht(data_list)
             if err:

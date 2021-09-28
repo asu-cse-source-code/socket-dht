@@ -32,6 +32,9 @@ class Client:
         self.leaving_user = False
         self.started_check = False
         # UPDServer sockets
+        '''
+            I should create separate sub classes within this Client class
+        '''
         self.client_to_server = UDPServer()
         self.accept_port = UDPServer()
         self.query_port = UDPServer()

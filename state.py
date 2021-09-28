@@ -181,6 +181,27 @@ class StateInfo:
                     return None
 
         return "Invalid user given"
+
+    def join_dht(self, data_list):
+        '''Simple check to see if the leave-dht command is valid'''
+        if len(data_list) != 2:
+            return None, "Invalid number of arguments - expected 2."
+
+        if not self.dht:
+            return None, "There is no DHT created"
+
+        for username, value in self.users.items():
+            if username == data_list[1]:
+                if value.state != 'Free':
+                    return None, f"{data_list[1]} is already maintaining the DHT"
+                else:
+                    # Valid user given
+                    self.joining_user = username
+                    self.stabilizing_dht = True
+                    return f"Adding {username} to the DHT", None
+
+        return "Invalid user given"
+
     
     def leave_dht(self, data_list):
         '''Simple check to see if the leave-dht command is valid'''
@@ -207,31 +228,54 @@ class StateInfo:
 
     def dht_rebuilt(self, data_list):
         '''Check to see if the rebuilt dht command is valid'''
-        if len(data_list) != 3:
-            return None, "Invalid number of arguments - expected 3."
-
-        if data_list[1] != self.leaving_user:
-            return None, "Only the user who initiated the leave-dht can respond with complete"
         
-        # Updating the state of new DHT maintainers
-        for user in self.dht:
-            if user.username == data_list[1]:
-                user.state = 'Free'
-                self.users[user.username] = user
-            elif user.username == data_list[2]:
-                if user.state != 'Leader':
-                    user.state = 'Leader'
+        if self.leaving_user:
+            if len(data_list) != 3:
+                return None, "Invalid number of arguments - expected 3."
+
+            if data_list[1] != self.leaving_user:
+                return None, "Only the user who initiated the leave-dht can respond with complete"
+            
+            # Updating the state of new DHT maintainers
+            for user in self.dht:
+                if user.username == data_list[1]:
+                    user.state = 'Free'
                     self.users[user.username] = user
-            else:
-                if user.state == 'Leader':
+                elif user.username == data_list[2]:
+                    if user.state != 'Leader':
+                        user.state = 'Leader'
+                        self.users[user.username] = user
+                else:
+                    if user.state == 'Leader':
+                        user.state = 'InDHT'
+                        self.users[user.username] = user
+
+            self.dht_leader = data_list[2]
+            self.stabilizing_dht = False
+            self.leaving_user = None
+
+            return "DHT has been successfully rebuilt", None
+
+        elif self.joining_user:
+            if len(data_list) != 2:
+                return None, "Invalid number of arguments - expected 2."
+
+            if data_list[1] != self.joining_user:
+                return None, "Only the user who initiated the join-dht can respond with complete"
+            
+            # Updating the state of new DHT maintainer
+            for user in self.dht:
+                if user.username == data_list[1]:
                     user.state = 'InDHT'
                     self.users[user.username] = user
 
-        self.dht_leader = data_list[2]
-        self.stabilizing_dht = False
-        self.leaving_user = None
+            self.stabilizing_dht = False
+            self.joining_user = None
 
-        return "DHT has been successfully rebuilt", None
+            return "DHT has been successfully rebuilt", None
+        
+        else:
+            return "There is no dht-rebuild in process", None
     
     def teardown_dht(self, data_list):
         '''Simple check to see if the teardown-dht command is valid'''
