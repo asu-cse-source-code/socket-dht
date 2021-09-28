@@ -119,6 +119,7 @@ def main(args):
     # Add loop here so that we can disconnect and reconnect to server
     while True:
         message, addr = server.socket.recvfrom(BUFFER_SIZE)
+        # print(f"server connected by addr: {addr}")
 
         server, state = parse_data(server, state, message, addr)
 

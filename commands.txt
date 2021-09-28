@@ -48,16 +48,16 @@ leave-dht gretchen
 
 /// 3 end hosts
 
-Server on general4 -> 10.120.70.145
-clients on general3 -> 10.120.70.106
-and local -> 127.0.0.1
+Server on localhost1 -> 192.168.0.140
+clients on localhost2 -> 192.168.0.225
+and localhost3 -> 192.168.0.204
 
 python ServerDriver.py 65432
 
 
-python ClientDriver.py austin 10.120.70.145 65432 10.120.70.106 64352 64330 64353
-python ClientDriver.py gretchen 10.120.70.145 65432 127.0.0.1 64354 64331 64355
-python ClientDriver.py randy 10.120.70.145 65432 127.0.0.1 64356 64332 64357
-python ClientDriver.py john 10.120.70.145 65432 127.0.0.1 64358 64333 64359
-python ClientDriver.py brad 10.120.70.145 65432 127.0.0.1 64360 64334 64361
-python ClientDriver.py chad 10.120.70.145 65432 127.0.0.1 64362 64335 64363
+python ClientDriver.py austin 192.168.0.140 65432 192.168.0.225 64352 64330 64353
+python ClientDriver.py gretchen 192.168.0.140 65432 192.168.0.204 64354 64331 64355
+python ClientDriver.py randy 192.168.0.140 65432 127.0.0.1 64356 64332 64357
+python ClientDriver.py john 192.168.0.140 65432 127.0.0.1 64358 64333 64359
+python ClientDriver.py brad 192.168.0.140 65432 127.0.0.1 64360 64334 64361
+python ClientDriver.py chad 192.168.0.140 65432 127.0.0.1 64362 64335 64363
