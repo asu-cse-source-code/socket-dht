@@ -53,7 +53,7 @@ class Client:
             
 
     def set_data(self, data, index=0):
-        # print('setting client data:', data)
+        print('setting client data:', data)
         self.user_dht = data
         self.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
         self.id = data[index+1]['id']
@@ -393,6 +393,7 @@ class Client:
                 data = (self.user_dht[j], self.user_dht[i], self.user_dht[0])
             # print("Sending data: ", data)
             try:
+                print(f'sending message to addr: ({self.user_dht[i]["ip"]}, {self.user_dht[i]["port"]})')
                 self.send_port.send_response(addr=(self.user_dht[i]['ip'], int(self.user_dht[i]['port'])), res='SUCCESS', type='set-id', data=data)
                 self.send_port.socket.recv(self.BUFFER_SIZE)
                 print(f"Successfully sent set-id command to {self.user_dht[i]['username']}")
