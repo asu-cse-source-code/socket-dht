@@ -53,7 +53,6 @@ class Client:
             
 
     def set_data(self, data, index=0):
-        print('setting client data:', data)
         self.user_dht = data
         self.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
         self.id = data[index+1]['id']
@@ -67,6 +66,7 @@ class Client:
         print(f"\tn = {self.n}")
         print(f"\tid = {self.id}")
         print(f"\tusername = {self.username}")
+        print(f"\taccpt addr = {self.accept_port_address}")
         print(f"\tnext node = {self.next_node_addr}")
         print(f"\tprev node = {self.prev_node_addr}")
         print(f"\tnext query = {self.next_node_query_addr}")
@@ -448,9 +448,7 @@ class Client:
                 print(json.dumps(data_loaded, sort_keys=False, indent=4))
             
             if data_loaded['type'] == 'DHT':
-                print("Received type DHT")
                 self.set_data(data_loaded['data'], index=-1)
-                print('Finished setting data.. on to connecting nodes')
                 self.connect_all_nodes()
                 # Call setup all dht but set the input printer var to false
                 self.setup_all_local_dht(False)
