@@ -24,11 +24,12 @@ query-dht randy
 python ServerDriver.py 65432
 
 
-python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64352 64330 64353
-python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64354 64331 64355
-python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64356 64332 64357
-python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64358 64333 64359
-python ClientDriver.py 127.0.0.1 65432 127.0.0.1 64360 64334 64361
+python ClientDriver.py austin 127.0.0.1 65432 127.0.0.1 64352 64330 64353
+python ClientDriver.py gretchen 127.0.0.1 65432 127.0.0.1 64354 64331 64355
+python ClientDriver.py randy 127.0.0.1 65432 127.0.0.1 64356 64332 64357
+python ClientDriver.py john 127.0.0.1 65432 127.0.0.1 64358 64333 64359
+python ClientDriver.py brad 127.0.0.1 65432 127.0.0.1 64360 64334 64361
+python ClientDriver.py chad 127.0.0.1 65432 127.0.0.1 64362 64335 64363
 
 register austin 127.0.0.1 64352 64330
 register gretchen 127.0.0.1 64354 64331

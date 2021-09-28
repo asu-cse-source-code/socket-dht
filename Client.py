@@ -8,10 +8,12 @@ import sys
 
 class Client:
     '''The Client class that has a single instance for each client running'''
-    def __init__(self, serv_ip, serv_port, client_ip, client_port, query_ip, query_port, right_ip, right_port, hash_size, buff_size, file_path):
+    def __init__(self, username, serv_ip, serv_port, client_ip, client_port, query_ip, 
+                query_port, right_ip, right_port, hash_size, buff_size, file_path):
         self.BUFFER_SIZE = buff_size
         self.HASH_SIZE = hash_size
         self.FILE_PATH = file_path
+        self.username = username
         self.server_addr = (serv_ip, serv_port)
         self.accept_port_address = (client_ip, client_port)
         self.query_addr = (query_ip, query_port)
@@ -23,7 +25,6 @@ class Client:
         self.query = None
         self.began_query = False
         self.id = None
-        self.username = None
         self.n = None
         self.local_hash_table = [ [] for _ in range(hash_size) ]
         self.user_dht = None
@@ -41,12 +42,22 @@ class Client:
         self.send_port = UDPServer()
 
 
+    def start_threads(self):
+        # Start the client server
+        print('Starting client topology socket\n')
+        start_new_thread(self.initialize_acceptance_port, ())
+
+        # Start the client query server
+        print("Starting client query socket\n")
+        start_new_thread(self.client_query_socket, ())
+            
+
     def set_data(self, data, index=0):
         # print('setting client data:', data)
         self.user_dht = data
         self.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
         self.id = data[index+1]['id']
-        self.username = data[index+1]['username']
+        # self.username = data[index+1]['username']
         self.n = data[index+1]['n']
         self.next_node_addr = (data[index+2]['ip'], int(data[index+2]['port']))
         self.next_node_query_addr = (data[index+2]['ip'], int(data[index+2]['query']))
@@ -91,18 +102,21 @@ class Client:
             except:
                 print("client-node: sendall() error within records connect nodes")
 
-    def setup_all_local_dht(self):
+    def setup_all_local_dht(self, print_input=True):
         '''This function will read in the records one by one and call to check the record'''
         with open(os.path.join(sys.path[0], self.FILE_PATH), "r") as data_file:
             csv_reader = DictReader(data_file)
             total_records = 0
             # Iterate over each row in the csv using reader object
+            print("\nSending records through DHT to store.\n")
             for record in csv_reader:
                 self.check_record(record)
                 total_records += 1
-                if total_records % 20 == 0:
-                    print(f"{total_records} read so far...")
-            print(f"{total_records} read in total")
+                if total_records % 50 == 0:
+                    print(f"\t{total_records} records stored so far...")
+            print(f"\n\t{total_records} records stored in total")
+            if print_input:
+                print("\nEnter command for the server: ")
     
     def teardown_dht(self, leaving):
         if leaving:
@@ -172,7 +186,7 @@ class Client:
                 else:
                     next_node_addr = self.next_node_addr
                     self.teardown_dht(False)
-                    print(next_node_addr)
+                    # print(next_node_addr)
                     self.send_port.send_response(addr=next_node_addr, res='SUCCESS', type='teardown')
             elif data_loaded['type'] == 'reset-id':
                 new_id = int(data_loaded['data'])
@@ -289,8 +303,12 @@ class Client:
 
             if type(data_loaded['data']) != str:
                 record = data_loaded['data']
-                print(f"\n\nQuery for Long Name of {record['Long Name']}:\n")
-                print(json.dumps(data_loaded['data'], sort_keys=False, indent=4))
+                if record == None:
+                    print(f"\n\nQuery for Long Name of {self.query}: 404 record not found\n")
+                else:
+                    print(f"\n\nQuery for Long Name of {self.query}:\n")
+                    print(json.dumps(data_loaded['data'], sort_keys=False, indent=4))
+                self.query = None
                 return
             data_list = data_loaded['data'].split()
             # print(f"query-conn: received message ``{data_list}''\n")
@@ -311,7 +329,6 @@ class Client:
         id = pos % self.n
         if id == self.id:
             # This is the correct node for query
-            print('correct node for the query')
             records = self.local_hash_table[pos]
             for record in records:
                 if record['Long Name'] == ' '.join(long_name):
@@ -323,7 +340,6 @@ class Client:
             self.query_port.send_response(addr, res='FAILURE', type='query-result')
         else:
             # This isn't the correct node for query
-            print('incorrect node for query')
             self.query = ' '.join(long_name)
             self.connect_query_nodes(addr)
 
@@ -347,7 +363,6 @@ class Client:
             }
             data_loaded = json.dumps(data)
             query = bytes(data_loaded, 'utf-8')
-            self.query = None
             
             try:
                 if ip:
@@ -434,7 +449,8 @@ class Client:
             if data_loaded['type'] == 'DHT':
                 self.set_data(data_loaded['data'], index=-1)
                 self.connect_all_nodes()
-                self.setup_all_local_dht()
+                # Call setup all dht but set the input printer var to false
+                self.setup_all_local_dht(False)
                 success_string = bytes(f'dht-complete {self.username}', 'utf-8')
                 try:
                     self.client_to_server.socket.sendto(success_string, self.server_addr)

@@ -42,10 +42,13 @@ class StateInfo:
     def valid_user(self, user):
         '''Helper function to check if the user given is valid for registry'''
         # Check if username already exists and also if the username is all alphabetical
-        if user in self.users.keys() or not user.isalpha():
-            return False
+        if user in self.users.keys():
+            return "User already registered"
+
+        if not user.isalpha():
+            return "Username must be an alphabetic string"
         
-        return True
+        return None
 
     def register(self, data_list):
         '''
@@ -65,8 +68,9 @@ class StateInfo:
             if port in self.ports:
                 return None, f"Port {port} already taken"
         
-        if not self.valid_user(data_list[1]):
-            return None, "Invalid user"
+        err = self.valid_user(data_list[1])
+        if err:
+            return None, err
 
         user = self.User(data_list[1], data_list[2], data_list[3:])
         self.users[user.username] = user
@@ -102,8 +106,8 @@ class StateInfo:
         if len(data_list) != 3:
             return None, "Invalid number of arguments - expected 3"
 
-        if self.valid_user(data_list[2]):
-            return None, "Desired leader not in state table"
+        if data_list[2] not in self.users.keys():
+            return None, f"{data_list[2]} not in state table"
         
         n = int(data_list[1])
 
@@ -299,16 +303,15 @@ class StateInfo:
         if not self.dht:
             return None, "There is no DHT created"
 
-        for username, value in self.users.items():
-            if username == data_list[1]:
-                if value.state != 'Leader':
-                    return None, f"{data_list[1]} is not the leader of the DHT"
-                else:
-                    # Valid user given
-                    self.tearing_down_dht = True
-                    return f"Initiating teardown of the DHT", None
+        if data_list[1] not in self.users.keys():
+            return None, f"{data_list[2]} not in state table"
+        
+        if self.users[data_list[1]].state != 'Leader':
+            return None, f"{data_list[1]} is not the leader of the DHT"
 
-        return "Invalid user given"
+        # Set this flag so server knows it is in busy state
+        self.tearing_down_dht = True
+        return f"Initiating teardown of the DHT", None
 
     def teardown_complete(self, data_list):
         if len(data_list) != 2:
