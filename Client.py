@@ -75,7 +75,7 @@ class Client:
         print(f"\tid = {self.id}")
         print(f"\tusername = {self.username}")
         print(f"\taccpt addr = {self.accept_port_address}")
-        print(f"\query addr = {self.query_addr}")
+        print(f"\tquery addr = {self.query_addr}")
         print(f"\tnext node = {self.next_node_addr}")
         print(f"\tprev node = {self.prev_node_addr}")
         print(f"\tnext query = {self.next_node_query_addr}")

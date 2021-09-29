@@ -75,7 +75,7 @@ class StateInfo:
         user = self.User(data_list[1], data_list[2], data_list[3:])
         self.users[user.username] = user
         
-        return "User added successfully", None
+        return f"{data_list[1]} added to state table successfully", None
 
     def deregister(self, data_list):
         '''
