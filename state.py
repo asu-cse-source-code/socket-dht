@@ -183,8 +183,9 @@ class StateInfo:
                     return None, "User given doesn't have a state of Free"
                 else:
                     # Valid user given
-                    random_user_index = random.randrange(len(self.three_tuples))
-                    random_user = self.three_tuples[random_user_index]
+                    random_user_index = random.randrange(len(self.dht))
+                    random_user = self.dht[random_user_index]
+                    random_user = vars(random_user)
                     return random_user, None
 
         return None, "Invalid user given"
