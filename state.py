@@ -87,6 +87,9 @@ class StateInfo:
         if len(data_list) != 2:
             return None, "Invalid number of arguments - expected 2"
         
+        if data_list[1] not in self.users.keys():
+            return None, f"{data_list[1]} not in state table"
+        
         user_to_deregister = self.users[data_list[1]]
         if user_to_deregister.state != 'Free':
             return None, "User given is not in Free state"

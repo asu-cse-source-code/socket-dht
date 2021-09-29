@@ -89,7 +89,7 @@ class Client:
         
         return ascii_sum % self.HASH_SIZE
     
-    def end_script(message):
+    def end_script(self, message):
         if message:
             print(message)
         sys.exit()
