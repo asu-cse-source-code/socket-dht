@@ -30,7 +30,7 @@ class Client:
         self.user_dht = None
         self.new_leader = None
         self.leaving_user = False
-        self.joinin_user = False
+        self.joining_user = False
         self.started_check = False
         # UPDServer sockets
         '''
@@ -181,8 +181,18 @@ class Client:
                 self.teardown_dht(True)
                 if self.leaving_user:
                     # Now call to reset every node id
-                    print('Teardown complete now calling reset-id')
+                    print('Teardown complete now calling reset-id\n')
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=0)
+                elif self.joining_user:
+                    new_data = {
+                        'username': self.username,
+                        'n': 0,
+                        'addr': self.accept_port_address,
+                        'query': self.query_addr
+                    }
+
+                    print('Teardown complete now calling reset-n\n')
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
                 else:
                     # Continue with teardown
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
@@ -477,19 +487,13 @@ class Client:
                 self.connect_query_nodes(origin=self.query_addr, ip=first_ip, port=first_port)
                 # print(response)
             elif data_loaded['type'] == 'join-response':
+                self.joining_user = True
                 self.username = data_loaded['data']['username']
                 self.next_node_addr = tuple(data_loaded['data']['leader'][0])
                 self.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
-
-                new_data = {
-                    'username': self.username,
-                    'n': 0,
-                    'addr': self.accept_port_address,
-                    'query': self.query_addr
-                }
-
-                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
-                # print(response)
+                
+                # Teardown the current DHT
+                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'deregister':
                 self.end_script(f"{data_loaded['data']}\nTerminating client application.")
             elif data_loaded['type'] == 'leave-response':
