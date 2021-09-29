@@ -61,15 +61,25 @@ class Client:
         self.next_node_addr = (data[index+2]['ip'], int(data[index+2]['port']))
         self.next_node_query_addr = (data[index+2]['ip'], int(data[index+2]['query']))
 
+    def num_of_records(self):
+        count = 0
+        for list_of_records in self.local_hash_table:
+            for _ in list_of_records:
+                count += 1
+
+        return f"\tRecords held in hash: {count}"
+
     def output_node_info(self):
         print('\n\nNode info:\n\n')
         print(f"\tn = {self.n}")
         print(f"\tid = {self.id}")
         print(f"\tusername = {self.username}")
         print(f"\taccpt addr = {self.accept_port_address}")
+        print(f"\query addr = {self.query_addr}")
         print(f"\tnext node = {self.next_node_addr}")
         print(f"\tprev node = {self.prev_node_addr}")
         print(f"\tnext query = {self.next_node_query_addr}")
+        print(self.num_of_records())
 
     def hash_pos(self, record):
         '''Calculate the pos variable with this hash function'''
