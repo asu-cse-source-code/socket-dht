@@ -129,10 +129,9 @@ class Client:
                 print("\nEnter command for the server: ")
     
     def teardown_dht(self, leaving):
-        if leaving:
-            # Only teardown the local DHT, don't remove ID's or neighbors
-            self.local_hash_table = [ [] for _ in range(self.HASH_SIZE) ]
-        else:
+        # Only teardown the local DHT, don't remove ID's or neighbors
+        self.local_hash_table = [ [] for _ in range(self.HASH_SIZE) ]
+        if not leaving:
             self.id = None
             self.n = None
             self.user_dht = None
