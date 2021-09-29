@@ -184,15 +184,9 @@ class Client:
                     print('Teardown complete now calling reset-id\n')
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=0)
                 elif self.joining_user:
-                    new_data = {
-                        'username': self.username,
-                        'n': 0,
-                        'addr': self.accept_port_address,
-                        'query': self.query_addr
-                    }
-
-                    print('Teardown complete now calling reset-n\n')
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
+                    print("Teardown complete now rebuilding the DHT\n")
+                    # We know that the next node is the leader so call for rebuild of DHT
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=self.accept_port_address)
                 else:
                     # Continue with teardown
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
@@ -235,12 +229,14 @@ class Client:
                     self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
                 else:
                     # We know that the nodes have successfully been renumbered
-                    print("Node size successfully changed")
+                    print("Node size successfully changed\n")
                     self.prev_node_addr = data_loaded['data']['prev']
                     self.n = data_loaded['data']['n']
                     self.id = self.n - 1
-                    # We know that the next node is the leader so call for rebuild of DHT
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=self.accept_port_address)
+
+                    print("Teardown the existing DHT\n")
+                    # Teardown the current DHT
+                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'reset-left':
                 # print(data_loaded['data'])
                 if self.next_node_addr == tuple(data_loaded['data']['current']):
@@ -264,9 +260,11 @@ class Client:
                 self.send_port.send_response(addr=tuple(data_loaded['data']), res='SUCCESS', type='dht-rebuilt')
             elif data_loaded['type'] == 'dht-rebuilt':
                 success_string = bytes(f'dht-rebuilt {self.username} {self.new_leader}', 'utf-8')
-                if not self.leaving_user:
+                if self.joining_user:
+                    self.joining_user = False
                     success_string = bytes(f'dht-rebuilt {self.username}', 'utf-8')
                 self.leaving_user = False
+                
                 try:
                     self.client_to_server.socket.sendto(success_string, self.server_addr)
                     self.listen()
@@ -492,8 +490,15 @@ class Client:
                 self.next_node_addr = tuple(data_loaded['data']['leader'][0])
                 self.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
                 
-                # Teardown the current DHT
-                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
+                new_data = {
+                    'username': self.username,
+                    'n': 0,
+                    'addr': self.accept_port_address,
+                    'query': self.query_addr
+                }
+
+                # print('Teardown complete now calling reset-n\n')
+                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
             elif data_loaded['type'] == 'deregister':
                 self.end_script(f"{data_loaded['data']}\nTerminating client application.")
             elif data_loaded['type'] == 'leave-response':
