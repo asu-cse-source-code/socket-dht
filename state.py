@@ -185,7 +185,11 @@ class StateInfo:
                     # Valid user given
                     random_user_index = random.randrange(len(self.dht))
                     random_user = self.dht[random_user_index]
-                    random_user = vars(random_user)
+                    random_user = {
+                        'username': random_user.username,
+                        'ip': random_user.ipv4,
+                        'query': random_user.client_query_port
+                    }
                     return random_user, None
 
         return None, "Invalid user given"
