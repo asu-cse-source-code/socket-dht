@@ -26,7 +26,7 @@ HASH_SIZE = 353 # Size to initialize the local hash table to
 BUFFER_SIZE = 4096 # Max bytes to take in
 FILE_PATH = "StatsCountry.csv"
 ALL_COMMANDS = ['leave-dht', 'join-dht', 'query-dht', 'deregister', 'teardown-dht', 'register', 'setup-dht']
-DEBUGGING_COMMANDS = ['check-node', 'help', 'display-users', 'display-dht']
+DEBUGGING_COMMANDS = ['check-node', 'help', 'display-users']
 BASIC_COMMANDS = ['leave-dht', 'join-dht', 'query-dht', 'deregister', 'teardown-dht']
 
 
