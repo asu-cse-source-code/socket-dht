@@ -73,19 +73,19 @@ Debugging Commands:
         if command in ALL_COMMANDS:
             string_to_serv = user_input
             if command in BASIC_COMMANDS:
-                string_to_serv = f'{command} {client.username}'
+                string_to_serv = f'{command} {client.user.username}'
             elif command == 'register':
                 # register austin 127.0.0.1 64352 64330
-                string_to_serv = f'{command} {client.username} {client.accept_port_address[0]} {client.accept_port_address[1]} {client.query_addr[1]}'
+                string_to_serv = f'{command} {client.user.username} {client.user.accept_port_address[0]} {client.user.accept_port_address[1]} {client.user.query_addr[1]}'
             elif command == 'setup-dht':
                 if len(data_list) > 1:
-                    string_to_serv = f'{command} {data_list[1]} {client.username}'
+                    string_to_serv = f'{command} {data_list[1]} {client.user.username}'
                 else:
                     string_to_serv = f'{command}'
             # Send command to server
             string_to_serv = bytes(string_to_serv, 'utf-8')
             try:
-                client.client_to_server.socket.sendto(string_to_serv, client.server_addr)
+                client.sockets.client_to_server.socket.sendto(string_to_serv, client.user.server_addr)
                 client.listen()
             except Exception as error:
                 print(error)
@@ -96,7 +96,7 @@ Debugging Commands:
             elif command == 'help':
                 print(read_input.__doc__)
             elif command == 'display-dht' or command == 'display-users':
-                client.client_to_server.socket.sendto(bytes(command, 'utf-8'), client.server_addr)
+                client.sockets.client_to_server.socket.sendto(bytes(command, 'utf-8'), client.user.server_addr)
         else:
             print("Invalid command! Send help if you need to see all valid commands.\n")
 
@@ -117,13 +117,11 @@ def main(args):
     echo_serv_port = int(args[3])  # Second arg: Use given port
     client_IP = args[4]
     client_port = int(args[5])
-    query_ip = client_IP
     query_port = int(args[6])
-    right_ip = client_IP
     right_port = int(args[7])
 
-    client = Client(username, serv_IP, echo_serv_port, client_IP, client_port, query_ip, 
-                    query_port, right_ip, right_port, HASH_SIZE, BUFFER_SIZE, FILE_PATH)
+    client = Client(username, serv_IP, echo_serv_port, client_IP, client_port, 
+                    query_port, right_port, HASH_SIZE, BUFFER_SIZE, FILE_PATH)
 
 
     client.start_threads()

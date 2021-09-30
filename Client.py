@@ -8,39 +8,53 @@ import sys
 
 class Client:
     '''The Client class that has a single instance for each client running'''
-    def __init__(self, username, serv_ip, serv_port, client_ip, client_port, query_ip, 
-                query_port, right_ip, right_port, hash_size, buff_size, file_path):
+    def __init__(self, username, serv_ip, serv_port, client_ip, client_port, 
+                query_port, right_port, hash_size, buff_size, file_path):
+        # Constants
         self.BUFFER_SIZE = buff_size
         self.HASH_SIZE = hash_size
         self.FILE_PATH = file_path
-        self.username = username
-        self.server_addr = (serv_ip, serv_port)
-        self.accept_port_address = (client_ip, client_port)
-        self.query_addr = (query_ip, query_port)
-        self.send_port_addr = (right_ip, right_port)
-        self.next_node_addr = None
-        self.next_node_query_addr = None
-        self.prev_node_addr = None
+
+        # Initialize the User subclass
+        self.user = self.User(username, (serv_ip, serv_port), (client_ip, client_port), (client_ip, query_port), (client_ip, right_port))
+
+        # ClientServer subclass
+        self.sockets = self.ClientServer()
+
+        # Local hash table stored by the client
+        self.local_hash_table = [ [] for _ in range(hash_size) ]
+
+        # Booleans and checks that are kept track of by the client
         self.record = None
         self.query = None
         self.began_query = False
-        self.id = None
-        self.n = None
-        self.local_hash_table = [ [] for _ in range(hash_size) ]
-        self.user_dht = None
         self.new_leader = None
         self.leaving_user = False
         self.joining_user = False
         self.started_check = False
-        # UPDServer sockets
-        '''
-            I should create separate sub classes within this Client class
-        '''
-        self.client_to_server = UDPServer()
-        self.accept_port = UDPServer()
-        self.query_port = UDPServer()
-        self.send_port = UDPServer()
 
+    class ClientServer:
+        ''' UPDServer sockets'''
+        def __init__(self):
+            self.client_to_server = UDPServer()
+            self.accept_port = UDPServer()
+            self.query_port = UDPServer()
+            self.send_port = UDPServer()
+
+    class User:
+        '''Client user information'''
+        def __init__(self, username, server_addr, accept_addr, query_addr, send_addr):
+            self.username = username
+            self.server_addr = server_addr
+            self.accept_port_address = accept_addr
+            self.query_addr = query_addr
+            self.send_port_addr = send_addr
+            self.next_node_addr = None
+            self.next_node_query_addr = None
+            self.prev_node_addr = None
+            self.id = None
+            self.n = None
+            self.dht = None
 
     def start_threads(self):
         # Start the client server
@@ -53,13 +67,12 @@ class Client:
             
 
     def set_data(self, data, index=0):
-        self.user_dht = data
-        self.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
-        self.id = data[index+1]['id']
-        # self.username = data[index+1]['username']
-        self.n = data[index+1]['n']
-        self.next_node_addr = (data[index+2]['ip'], int(data[index+2]['port']))
-        self.next_node_query_addr = (data[index+2]['ip'], int(data[index+2]['query']))
+        self.user.dht = data
+        self.user.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
+        self.user.id = data[index+1]['id']
+        self.user.n = data[index+1]['n']
+        self.user.next_node_addr = (data[index+2]['ip'], int(data[index+2]['port']))
+        self.user.next_node_query_addr = (data[index+2]['ip'], int(data[index+2]['query']))
 
     def num_of_records(self):
         count = 0
@@ -71,14 +84,14 @@ class Client:
 
     def output_node_info(self):
         print('\n\nNode info:\n\n')
-        print(f"\tn = {self.n}")
-        print(f"\tid = {self.id}")
-        print(f"\tusername = {self.username}")
-        print(f"\taccpt addr = {self.accept_port_address}")
-        print(f"\tquery addr = {self.query_addr}")
-        print(f"\tnext node = {self.next_node_addr}")
-        print(f"\tprev node = {self.prev_node_addr}")
-        print(f"\tnext query = {self.next_node_query_addr}")
+        print(f"\tn = {self.user.n}")
+        print(f"\tid = {self.user.id}")
+        print(f"\tusername = {self.user.username}")
+        print(f"\taccpt addr = {self.user.accept_port_address}")
+        print(f"\tquery addr = {self.user.query_addr}")
+        print(f"\tnext node = {self.user.next_node_addr}")
+        print(f"\tprev node = {self.user.prev_node_addr}")
+        print(f"\tnext query = {self.user.next_node_query_addr}")
         print(self.num_of_records())
 
     def hash_pos(self, record):
@@ -101,14 +114,14 @@ class Client:
             trigger the query socket and send the query command to next node
         '''
         pos = self.hash_pos(record)
-        id = pos % self.n
-        if id == self.id:
+        id = pos % self.user.n
+        if id == self.user.id:
             # This is the desired location for record!
             self.local_hash_table[pos].append(record)
         else:
             try:
-                # print(f"sending to next node addr {client.next_node_addr}")
-                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='record', data=record)
+                # print(f"sending to next node addr {client.user.next_node_addr}")
+                self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='record', data=record)
             except:
                 print("client-node: sendall() error within records connect nodes")
 
@@ -132,12 +145,12 @@ class Client:
         # Only teardown the local DHT, don't remove ID's or neighbors
         self.local_hash_table = [ [] for _ in range(self.HASH_SIZE) ]
         if not leaving:
-            self.id = None
-            self.n = None
-            self.user_dht = None
-            self.next_node_addr = None
-            self.next_node_query_addr = None
-            self.prev_node_addr = None
+            self.user.id = None
+            self.user.n = None
+            self.user.dht = None
+            self.user.next_node_addr = None
+            self.user.next_node_query_addr = None
+            self.user.prev_node_addr = None
 
     def initialize_acceptance_port(self):
         '''
@@ -146,18 +159,18 @@ class Client:
         '''
 
         try:
-            self.accept_port.socket.bind(self.accept_port_address)
+            self.sockets.accept_port.socket.bind(self.user.accept_port_address)
         except Exception as error:
                 print(error)
-                print(f"server: bind() failed for client: {self.accept_port_address}")
+                print(f"server: bind() failed for client: {self.user.accept_port_address}")
                 return
             
-        print(f"client-server: Port server is listening to is: {self.accept_port_address[1]}\n")
+        print(f"client-server: Port server is listening to is: {self.user.accept_port_address[1]}\n")
         
         # Add loop here so that we can disconnect and reconnect to server
         while True:
             
-            message, addr = self.accept_port.socket.recvfrom(self.BUFFER_SIZE)
+            message, addr = self.sockets.accept_port.socket.recvfrom(self.BUFFER_SIZE)
 
             # print(f"Client-server received message from addr: {addr}")
 
@@ -175,98 +188,96 @@ class Client:
                 self.check_record(record=data_loaded['data'])
             elif data_loaded['type'] == 'set-id':
                 self.set_data(data_loaded['data'])
-                self.accept_port.socket.sendto(b'SUCCESS', addr)
+                self.sockets.accept_port.socket.sendto(b'SUCCESS', addr)
             elif data_loaded['type'] == 'leaving-teardown':
                 # Call teardown but with the leaving var set to True
                 self.teardown_dht(True)
                 if self.leaving_user:
                     # Now call to reset every node id
                     print('Teardown complete now calling reset-id\n')
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=0)
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-id', data=0)
                 elif self.joining_user:
                     print("Teardown complete now rebuilding the DHT\n")
                     # We know that the next node is the leader so call for rebuild of DHT
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=self.accept_port_address)
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='rebuild-dht', data=self.user.accept_port_address)
                 else:
                     # Continue with teardown
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'teardown':
                 if self.id == 0:
                     self.teardown_dht(False)
                     # Send successful command to server
-                    self.client_to_server.socket.sendto(bytes(f'teardown-complete {self.username}', 'utf-8'), self.server_addr) 
+                    self.sockets.client_to_server.socket.sendto(bytes(f'teardown-complete {self.user.username}', 'utf-8'), self.user.server_addr) 
                     self.listen()
                 else:
-                    next_node_addr = self.next_node_addr
                     self.teardown_dht(False)
-                    # print(next_node_addr)
-                    self.send_port.send_response(addr=next_node_addr, res='SUCCESS', type='teardown')
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='teardown')
             elif data_loaded['type'] == 'reset-id':
                 new_id = int(data_loaded['data'])
                 if not self.leaving_user:
-                    self.id = new_id
-                    self.n = self.n - 1
+                    self.user.id = new_id
+                    self.user.n = self.user.n - 1
                     new_id += 1
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-id', data=new_id)
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-id', data=new_id)
                 else:
                     # We know that the nodes have successfully been renumbered
                     print("Node ID's successfully changed")
                     # Call to convert neighbors or the nodes
                     self.convert_neighbors()
             elif data_loaded['type'] == 'reset-n':
-                if self.id == 0:
+                if self.user.id == 0:
                     # This is leader so set previous node and the new n
-                    self.n = self.n + 1
-                    data_loaded['data']['n'] = self.n
-                    self.prev_node_addr = data_loaded['data']['addr']
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
-                elif self.username != data_loaded['data']['username']:
-                    self.n = self.n + 1
-                    if self.n - 2 == self.id:
-                        data_loaded['data']['prev'] = self.accept_port_address
-                        self.next_node_addr = tuple(data_loaded['data']['addr'])
-                        self.next_node_query_addr = tuple(data_loaded['data']['query'])
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
+                    self.user.n = self.user.n + 1
+                    data_loaded['data']['n'] = self.user.n
+                    self.user.prev_node_addr = data_loaded['data']['addr']
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
+                elif self.user.username != data_loaded['data']['username']:
+                    self.user.n = self.user.n + 1
+                    if self.user.n - 2 == self.user.id:
+                        data_loaded['data']['prev'] = self.user.accept_port_address
+                        self.user.next_node_addr = tuple(data_loaded['data']['addr'])
+                        self.user.next_node_query_addr = tuple(data_loaded['data']['query'])
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-n', data=data_loaded['data'])
                 else:
                     # We know that the nodes have successfully been renumbered
                     print("Node size successfully changed\n")
-                    self.prev_node_addr = data_loaded['data']['prev']
-                    self.n = data_loaded['data']['n']
-                    self.id = self.n - 1
+                    self.user.prev_node_addr = data_loaded['data']['prev']
+                    self.user.n = data_loaded['data']['n']
+                    self.user.id = self.user.n - 1
 
                     print("Teardown the existing DHT\n")
                     # Teardown the current DHT
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'reset-left':
                 # print(data_loaded['data'])
-                if self.next_node_addr == tuple(data_loaded['data']['current']):
+                if self.user.next_node_addr == tuple(data_loaded['data']['current']):
                     # print("This is the prev node")
-                    self.next_node_addr = tuple(data_loaded['data']['new'])
-                    self.next_node_query_addr = tuple(data_loaded['data']['query'])
-                    self.send_port.send_response(addr=tuple(data_loaded['data']['current']), res='SUCCESS', type='reset-complete')
+                    self.user.next_node_addr = tuple(data_loaded['data']['new'])
+                    self.user.next_node_query_addr = tuple(data_loaded['data']['query'])
+                    self.sockets.send_port.send_response(addr=tuple(data_loaded['data']['current']), res='SUCCESS', type='reset-complete')
                 else:
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=data_loaded['data'])
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-left', data=data_loaded['data'])
             elif data_loaded['type'] == 'reset-right':
-                self.prev_node_addr = tuple(data_loaded['data'])
-                self.send_port.socket.sendto(bytes(self.username, 'utf-8'), addr)
+                self.user.prev_node_addr = tuple(data_loaded['data'])
+                self.sockets.send_port.socket.sendto(bytes(self.user.username, 'utf-8'), addr)
             elif data_loaded['type'] == 'reset-complete':
                 print('Received reset complete\nNow rebuilding DHT')
-                res_data = self.accept_port_address
-                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='rebuild-dht', data=res_data)
+                res_data = self.user.accept_port_address
+                self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='rebuild-dht', data=res_data)
             elif data_loaded['type'] == 'rebuild-dht':
                 print("Received rebuild DHT command\nSetting up node ring")
                 # self.new_leader = self.username # Set new leader when we initialize the rebuild of DHT
                 self.setup_all_local_dht()
-                self.send_port.send_response(addr=tuple(data_loaded['data']), res='SUCCESS', type='dht-rebuilt')
+                self.sockets.send_port.send_response(addr=tuple(data_loaded['data']), res='SUCCESS', type='dht-rebuilt')
             elif data_loaded['type'] == 'dht-rebuilt':
-                success_string = bytes(f'dht-rebuilt {self.username} {self.new_leader}', 'utf-8')
+                success_string = bytes(f'dht-rebuilt {self.user.username} {self.new_leader}', 'utf-8')
                 if self.joining_user:
                     self.joining_user = False
-                    success_string = bytes(f'dht-rebuilt {self.username}', 'utf-8')
+                    success_string = bytes(f'dht-rebuilt {self.user.username}', 'utf-8')
                 self.leaving_user = False
                 
                 try:
-                    self.client_to_server.socket.sendto(success_string, self.server_addr)
+                    self.sockets.client_to_server.socket.sendto(success_string, self.user.server_addr)
                     self.listen()
                 except:
                     print("client: sendall() error sending success string")
@@ -276,7 +287,7 @@ class Client:
                 if not self.started_check:
                     self.started_check = False
                 else:
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='check-nodes')
 
 
     def client_query_socket(self):
@@ -286,18 +297,18 @@ class Client:
         '''
 
         try:
-            self.query_port.socket.bind(self.query_addr)
+            self.sockets.query_port.socket.bind(self.user.query_addr)
         except Exception as error:
                 print(error)
                 print("query-server: bind() failed")
                 return
             
         # Add loop here so that we can disconnect and reconnect to server
-        print(f"query-server: Port server is listening to is: {self.query_addr[1]}\n")
+        print(f"query-server: Port server is listening to is: {self.user.query_addr[1]}\n")
         
         while True:
             
-            message = self.query_port.socket.recv(self.BUFFER_SIZE)
+            message = self.sockets.query_port.socket.recv(self.BUFFER_SIZE)
 
             # print(f"Query port received message: {message} from addr: {addr}")
 
@@ -343,18 +354,18 @@ class Client:
         '''
         pos = self.hash_pos({'Long Name': ' '.join(long_name)})
 
-        id = pos % self.n
-        if id == self.id:
+        id = pos % self.user.n
+        if id == self.user.id:
             # This is the correct node for query
             records = self.local_hash_table[pos]
             for record in records:
                 if record['Long Name'] == ' '.join(long_name):
                     self.began_query = False
-                    self.query_port.send_response(addr, res='SUCCESS', type='query-result', data=record)
+                    self.sockets.query_port.send_response(addr, res='SUCCESS', type='query-result', data=record)
                     return
             
             self.began_query = False
-            self.query_port.send_response(addr, res='FAILURE', type='query-result')
+            self.sockets.query_port.send_response(addr, res='FAILURE', type='query-result')
         else:
             # This isn't the correct node for query
             self.query = ' '.join(long_name)
@@ -369,7 +380,7 @@ class Client:
         if self.began_query and not ip:
             self.began_query = False
             print("Query looped through and didn't find record")
-            self.query_port.send_response(origin, res='FAILURE', type='query-result')
+            self.sockets.query_port.send_response(origin, res='FAILURE', type='query-result')
             return
 
         if self.query:
@@ -385,10 +396,10 @@ class Client:
                 if ip:
                     # print(f'sending query info {data_loaded} to address {ip}, {port}')
                     self.began_query = True
-                    self.query_port.socket.sendto(query, (ip, port))
+                    self.sockets.query_port.socket.sendto(query, (ip, port))
                 else:
-                    # print(f'sending query info {data_loaded} to address {self.next_node_query_addr}')
-                    self.query_port.socket.sendto(query, self.next_node_query_addr)
+                    # print(f'sending query info {data_loaded} to address {self.user.next_node_query_addr}')
+                    self.sockets.query_port.socket.sendto(query, self.user.next_node_query_addr)
                 # Sent query now listening for response from next node!
             except:
                 print("client-node: sendall() error within query connection")
@@ -397,23 +408,23 @@ class Client:
             #     time.sleep(1)
         else:
             print("missing query be sure to put 'query {Long Name}' in your query command")
-            self.query_port.send_response(origin, res='FAILURE', type='query-result')
+            self.sockets.query_port.send_response(origin, res='FAILURE', type='query-result')
 
     def connect_all_nodes(self):
         i = 1
 
-        while i < len(self.user_dht):
+        while i < len(self.user.dht):
             j = i - 1
-            if i + 1 < len(self.user_dht):
-                data = (self.user_dht[j], self.user_dht[i], self.user_dht[i+1])
+            if i + 1 < len(self.user.dht):
+                data = (self.user.dht[j], self.user.dht[i], self.user.dht[i+1])
             else:
-                data = (self.user_dht[j], self.user_dht[i], self.user_dht[0])
+                data = (self.user.dht[j], self.user.dht[i], self.user.dht[0])
             # print("Sending data: ", data)
             try:
-                print(f'sending message to addr: ({self.user_dht[i]["ip"]}, {self.user_dht[i]["port"]})')
-                self.send_port.send_response(addr=(self.user_dht[i]['ip'], int(self.user_dht[i]['port'])), res='SUCCESS', type='set-id', data=data)
-                self.send_port.socket.recv(self.BUFFER_SIZE)
-                print(f"Successfully sent set-id command to {self.user_dht[i]['username']}")
+                print(f'sending message to addr: ({self.user.dht[i]["ip"]}, {self.user.dht[i]["port"]})')
+                self.sockets.send_port.send_response(addr=(self.user.dht[i]['ip'], int(self.user.dht[i]['port'])), res='SUCCESS', type='set-id', data=data)
+                self.sockets.send_port.socket.recv(self.BUFFER_SIZE)
+                print(f"Successfully sent set-id command to {self.user.dht[i]['username']}")
             except Exception as error:
                 print(error)
                 print('An exception occurred sending node connection data')
@@ -421,11 +432,11 @@ class Client:
             i += 1
 
     def convert_neighbors(self):
-        reset_right_data = self.prev_node_addr
+        reset_right_data = self.user.prev_node_addr
 
         # Send the reset-right command and await a response
-        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-right', data=reset_right_data)
-        res = self.send_port.socket.recv(self.BUFFER_SIZE)
+        self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-right', data=reset_right_data)
+        res = self.sockets.send_port.socket.recv(self.BUFFER_SIZE)
 
         # Check for success message from res
         data_loaded = res.decode('utf-8')
@@ -433,23 +444,23 @@ class Client:
         self.new_leader = data_loaded
 
         reset_left_data = {
-            'current': self.accept_port_address,
-            'new': self.next_node_addr,
-            'query': self.next_node_query_addr
+            'current': self.user.accept_port_address,
+            'new': self.user.next_node_addr,
+            'query': self.user.next_node_query_addr
         }
         
-        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)        
+        self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-left', data=reset_left_data)        
         
     def check_nodes(self):
         self.started_check = True
-        self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='check-nodes')
+        self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='check-nodes')
 
     def listen(self):
         '''
             Listen function that will listen to all responses from the server connected to self
         '''
         
-        data = self.client_to_server.socket.recv(self.BUFFER_SIZE)
+        data = self.sockets.client_to_server.socket.recv(self.BUFFER_SIZE)
         data_loaded = data.decode('utf-8')
 
         if data_loaded:
@@ -469,9 +480,9 @@ class Client:
                 self.connect_all_nodes()
                 # Call setup all dht but set the input printer var to false
                 self.setup_all_local_dht(False)
-                success_string = bytes(f'dht-complete {self.username}', 'utf-8')
+                success_string = bytes(f'dht-complete {self.user.username}', 'utf-8')
                 try:
-                    self.client_to_server.socket.sendto(success_string, self.server_addr)
+                    self.sockets.client_to_server.socket.sendto(success_string, self.user.server_addr)
                     self.listen()
                 except:
                     print("client: sendall() error sending success string")
@@ -482,32 +493,32 @@ class Client:
                 # print(f"Received query of {self.query}")
                 first_ip = data_loaded['data']['ip']
                 first_port = int(data_loaded['data']['query'])
-                self.connect_query_nodes(origin=self.query_addr, ip=first_ip, port=first_port)
+                self.connect_query_nodes(origin=self.user.query_addr, ip=first_ip, port=first_port)
                 # print(response)
             elif data_loaded['type'] == 'join-response':
                 self.joining_user = True
-                self.username = data_loaded['data']['username']
-                self.next_node_addr = tuple(data_loaded['data']['leader'][0])
-                self.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
+                self.user.username = data_loaded['data']['username']
+                self.user.next_node_addr = tuple(data_loaded['data']['leader'][0])
+                self.user.next_node_query_addr = tuple(data_loaded['data']['leader'][1])
                 
                 new_data = {
-                    'username': self.username,
+                    'username': self.user.username,
                     'n': 0,
-                    'addr': self.accept_port_address,
-                    'query': self.query_addr
+                    'addr': self.user.accept_port_address,
+                    'query': self.user.query_addr
                 }
 
                 # print('Teardown complete now calling reset-n\n')
-                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
+                self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='reset-n', data=new_data)
             elif data_loaded['type'] == 'deregister':
                 self.end_script(f"{data_loaded['data']}\nTerminating client application.")
             elif data_loaded['type'] == 'leave-response':
                 self.leaving_user = True
-                self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='leaving-teardown')
+                self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'teardown-response':
                 # Need to be on the leader node for this to work
-                if self.id == 0:
-                    self.send_port.send_response(addr=self.next_node_addr, res='SUCCESS', type='teardown')
+                if self.user.id == 0:
+                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='teardown')
                 else:
                     print("\n\nCan't run this command since this is not the leader node\n")
         else:
