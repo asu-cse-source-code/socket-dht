@@ -172,7 +172,7 @@ class StateInfo:
 
         # All checks passed so this is a valid query command
         maintainers = ['Leader', 'InDHT']
-        dht_maintainers = [user for user in self.state_table if user.state in maintainers]
+        dht_maintainers = [user for user in self.state_table.values() if user.state in maintainers]
         random_user_index = random.randrange(len(dht_maintainers))
         random_user = dht_maintainers[random_user_index]
         random_user = {
@@ -225,7 +225,7 @@ class StateInfo:
             return None, "There is no DHT created"
             
         maintainers = ['Leader', 'InDHT']
-        dht_maintainers = [user for user in self.state_table if user.state in maintainers]
+        dht_maintainers = [user for user in self.state_table.values() if user.state in maintainers]
 
         if (len(dht_maintainers)) < 2:
             return None, "Current DHT doesn't have enough maintainers for anyone to leave"
