@@ -76,6 +76,7 @@ class Client:
             self.dht = None
 
     def start_threads(self):
+        '''Begins the threads of the client servers to read in packages received'''
         # Start the client server
         print('Starting client topology socket\n')
         start_new_thread(self.initialize_acceptance_port, ())
@@ -86,6 +87,7 @@ class Client:
             
 
     def set_data(self, data, index=0):
+        '''This is a helper function to set the user data after receiving the information from the DHT leader'''
         self.user.dht = data
         self.user.prev_node_addr = (data[index]['ip'], int(data[index]['port']))
         self.user.id = data[index+1]['id']
@@ -94,6 +96,7 @@ class Client:
         self.user.next_node_query_addr = (data[index+2]['ip'], int(data[index+2]['query']))
 
     def num_of_records(self):
+        '''Helper function that is only used for debugging purposes when ouputing the node info'''
         count = 0
         for list_of_records in self.local_hash_table:
             for _ in list_of_records:
@@ -102,16 +105,9 @@ class Client:
         return f"\tRecords held in hash: {count}"
 
     def output_node_info(self):
-        print('\n\nNode info:\n\n')
-        print(f"\tn = {self.user.n}")
-        print(f"\tid = {self.user.id}")
-        print(f"\tusername = {self.user.username}")
-        print(f"\taccpt addr = {self.user.accept_port_address}")
-        print(f"\tquery addr = {self.user.query_addr}")
-        print(f"\tnext node = {self.user.next_node_addr}")
-        print(f"\tprev node = {self.user.prev_node_addr}")
-        print(f"\tnext query = {self.user.next_node_query_addr}")
-        print(self.num_of_records())
+        '''Debugging function, prints the info held on the user instance'''
+        print(json.dumps(vars(self.user), sort_keys=False, indent=4))
+        print("\n", self.num_of_records())
 
     def hash_pos(self, record):
         '''Calculate the pos variable with this hash function'''
@@ -122,6 +118,7 @@ class Client:
         return ascii_sum % self.HASH_SIZE
     
     def end_script(self, message):
+        '''Function that will terminate the script gracefully'''
         if message:
             print(message)
         sys.exit()
@@ -161,6 +158,7 @@ class Client:
                 print("\nEnter command for the server: ")
     
     def teardown_dht(self, leaving):
+        '''Teardown DHT by removing all info on the user instance and resetting the hash table to empty'''
         # Only teardown the local DHT, don't remove ID's or neighbors
         self.local_hash_table = [ [] for _ in range(self.HASH_SIZE) ]
         if not leaving:
@@ -326,18 +324,13 @@ class Client:
         print(f"query-server: Port server is listening to is: {self.user.query_addr[1]}\n")
         
         while True:
-            
             message = self.sockets.query_port.socket.recv(self.BUFFER_SIZE)
-
-            # print(f"Query port received message: {message} from addr: {addr}")
-
             self.client_query_conn(message)
 
     def client_query_conn(self, data):
         '''
             Socket connection listener that will listen for query commands
         '''
-
         if data:
             data_loaded = data.decode('utf-8')
 
@@ -345,8 +338,7 @@ class Client:
                 try:
                     data_loaded = json.loads(data_loaded)
                 except:
-                    print("error with json.load")
-                    return
+                    self.end_script("error with json.load")
 
             if type(data_loaded['data']) != str:
                 record = data_loaded['data']
@@ -357,13 +349,15 @@ class Client:
                     print(json.dumps(data_loaded['data'], sort_keys=False, indent=4))
                 self.query = None
                 return
+            
+            # The data is a string so we can use the split method to create a list
             data_list = data_loaded['data'].split()
-            # print(f"query-conn: received message ``{data_list}''\n")
+
             if data_list[0] == 'query':
                 addr = tuple(data_loaded['origin'])
                 self.run_query(addr, data_list[1:])
             else:
-                print(f"Incorrect data received at query port {data_loaded}")
+                print(json.dumps(data_loaded, sort_keys=False, indent=4))
 
 
     def run_query(self, addr, long_name):
@@ -372,7 +366,7 @@ class Client:
             or call the next node with the same query command
         '''
         pos = self.hash_pos({'Long Name': ' '.join(long_name)})
-
+    
         id = pos % self.user.n
         if id == self.user.id:
             # This is the correct node for query
@@ -398,7 +392,6 @@ class Client:
         # This check will avoid looping through the nodes infinitely
         if self.began_query and not ip:
             self.began_query = False
-            print("Query looped through and didn't find record")
             self.sockets.query_port.send_response(origin, res='FAILURE', type='query-result')
             return
 
@@ -423,11 +416,10 @@ class Client:
             except:
                 print("client-node: sendall() error within query connection")
                 return
-            # else:
-            #     time.sleep(1)
+
         else:
-            print("missing query be sure to put 'query {Long Name}' in your query command")
-            self.sockets.query_port.send_response(origin, res='FAILURE', type='query-result')
+            failure_res = "missing query be sure to put 'query {Long Name}' in your query command"
+            self.sockets.query_port.send_response(origin, res='FAILURE', type='query-result', data=failure_res)
 
     def connect_all_nodes(self):
         i = 1
