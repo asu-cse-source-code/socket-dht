@@ -1,3 +1,21 @@
+'''
+Developer: Austin Spencer
+Class: CSE 434 Computer Networks
+Professor: Syrotiuk
+Due: 10/17/2021
+Group: 85
+Ports: 4300 - 43499
+
+About:  Purpose of this project is to implement your own application program in which processes
+    communicate using sockets to maintain a distributed hash table (DHT) dynamically, and 
+    answer queries using it.
+
+ClientDriver.py:
+    - This script initializes the Server and state instances and parses the commands sent in by the client
+
+'''
+
+
 from Server import UDPServer
 from state import StateInfo
 import sys
