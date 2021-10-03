@@ -14,6 +14,10 @@ ClientDriver.py:
     - This file facilitates the clients and accepts user input to pass to client instance
     and interact with server
 
+Usage:
+    -- S = Server ; C = Client ; P = Port
+
+    python ClientDriver.py ⟨username⟩ ⟨S IP⟩ ⟨S P⟩ ⟨C IP⟩ ⟨C left P⟩ ⟨C query P⟩ ⟨C accept P⟩
 '''
 
 

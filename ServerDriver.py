@@ -4,14 +4,17 @@ Class: CSE 434 Computer Networks
 Professor: Syrotiuk
 Due: 10/17/2021
 Group: 85
-Ports: 4300 - 43499
+Ports: 43000 - 43499
 
 About:  Purpose of this project is to implement your own application program in which processes
     communicate using sockets to maintain a distributed hash table (DHT) dynamically, and 
     answer queries using it.
 
-ClientDriver.py:
+ServerDriver.py:
     - This script initializes the Server and state instances and parses the commands sent in by the client
+
+Usage:
+    - python ServerDriver.py ⟨port⟩
 
 '''
 
@@ -118,6 +121,10 @@ def parse_data(server, state, data, address):
 
 
 def main(args):
+    '''
+    Usage:
+        - python ServerDriver.py ⟨port⟩
+    '''
     if len(args) != 2:
         sys.exit(f"Usage:  {args[0]} <UDP SERVER PORT>\n")
     
