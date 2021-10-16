@@ -205,6 +205,7 @@ class Client:
                 self.check_record(record=data_loaded['data'])
             elif data_loaded['type'] == 'set-id':
                 self.set_data(data_loaded['data'])
+                # print(vars(self.user))
                 self.sockets.accept_port.socket.sendto(b'SUCCESS', addr)
             elif data_loaded['type'] == 'leaving-teardown':
                 # Call teardown but with the leaving var set to True
@@ -221,14 +222,15 @@ class Client:
                     # Continue with teardown
                     self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='leaving-teardown')
             elif data_loaded['type'] == 'teardown':
-                if self.id == 0:
+                if self.user.id == 0:
                     self.teardown_dht(False)
                     # Send successful command to server
                     self.sockets.client_to_server.socket.sendto(bytes(f'teardown-complete {self.user.username}', 'utf-8'), self.user.server_addr) 
                     self.listen()
                 else:
+                    next_node_addr = self.user.next_node_addr
                     self.teardown_dht(False)
-                    self.sockets.send_port.send_response(addr=self.user.next_node_addr, res='SUCCESS', type='teardown')
+                    self.sockets.send_port.send_response(addr=next_node_addr, res='SUCCESS', type='teardown')
             elif data_loaded['type'] == 'reset-id':
                 new_id = int(data_loaded['data'])
                 if not self.leaving_user:

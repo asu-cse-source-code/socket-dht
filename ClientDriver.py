@@ -63,7 +63,6 @@ Debugging Commands:
     - check-node
         This command while output important information about the current node
 
-    - display-dht
     - display-users
         These commands will do as they sound and have the server desplay the respective database
     '''
